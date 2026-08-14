@@ -58,3 +58,4 @@ Für eine eigene Domain entfernst du im Workflow den Wert von
 Next.js (statischer Export), React, TypeScript, Supabase und Lucide Icons. Es ist
 kein eigener Server erforderlich: GitHub Pages liefert die Oberfläche aus,
 Supabase übernimmt Authentifizierung und Datenbank.
+
