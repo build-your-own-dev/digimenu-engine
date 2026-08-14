@@ -4,8 +4,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight, Check, ChevronDown, CircleCheck, Copy, Download, ExternalLink, Eye,
-  Globe2, LayoutDashboard, Leaf, Loader2, LogOut, Menu, Pencil, Plus,
-  QrCode, Search, Settings, Sparkles, Trash2, UtensilsCrossed, X,
+  Globe2, ImagePlus, LayoutDashboard, Leaf, Loader2, LogOut, Menu, Pencil, Plus,
+  QrCode, Search, Settings, Sparkles, Trash2, UploadCloud, UtensilsCrossed, X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { supabase, supabaseConfigured } from "../lib/supabase";
@@ -13,18 +13,19 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 type Restaurant = {
   id: string; owner_id: string; name: string; slug: string; description: string | null;
   location: string | null; currency: string; published: boolean; accent_color: string;
+  logo_url: string | null; banner_url: string | null;
 };
 type Category = { id: string; restaurant_id: string; name: string; sort_order: number };
 type MenuItem = {
   id: string; restaurant_id: string; category_id: string; name: string;
   description: string | null; price: number; available: boolean; vegetarian: boolean;
-  vegan: boolean; spicy: boolean; sort_order: number;
+  vegan: boolean; spicy: boolean; sort_order: number; image_url: string | null;
 };
 
 const demoRestaurant: Restaurant = {
   id: "demo", owner_id: "demo", name: "Casa Luma", slug: "demo",
   description: "Mediterrane Küche, ehrliche Zutaten und ein bisschen Sonne auf jedem Teller.",
-  location: "Chur, Schweiz", currency: "CHF", published: true, accent_color: "#ff5c35",
+  location: "Chur, Schweiz", currency: "CHF", published: true, accent_color: "#ff5c35", logo_url: null, banner_url: null,
 };
 const demoCategories: Category[] = [
   { id: "c1", restaurant_id: "demo", name: "Zum Teilen", sort_order: 0 },
@@ -32,13 +33,18 @@ const demoCategories: Category[] = [
   { id: "c3", restaurant_id: "demo", name: "Getränke", sort_order: 2 },
 ];
 const demoItems: MenuItem[] = [
-  { id: "i1", restaurant_id: "demo", category_id: "c1", name: "Burrata & Pfirsich", description: "Basilikumöl, geröstete Mandeln, Sauerteig", price: 18, available: true, vegetarian: true, vegan: false, spicy: false, sort_order: 0 },
-  { id: "i2", restaurant_id: "demo", category_id: "c1", name: "Luma Hummus", description: "Geröstete Kichererbsen, Za'atar, Fladenbrot", price: 14, available: true, vegetarian: true, vegan: true, spicy: false, sort_order: 1 },
-  { id: "i3", restaurant_id: "demo", category_id: "c2", name: "Zitronen-Risotto", description: "Erbsen, Pecorino, Minze", price: 27, available: true, vegetarian: true, vegan: false, spicy: false, sort_order: 0 },
-  { id: "i4", restaurant_id: "demo", category_id: "c2", name: "Harissa Poulet", description: "Couscous, Aprikose, Joghurt", price: 32, available: true, vegetarian: false, vegan: false, spicy: true, sort_order: 1 },
-  { id: "i5", restaurant_id: "demo", category_id: "c3", name: "Hausgemachte Limonade", description: "Zitrone, Rosmarin, wenig Zucker", price: 6.5, available: true, vegetarian: true, vegan: true, spicy: false, sort_order: 0 },
-  { id: "i6", restaurant_id: "demo", category_id: "c3", name: "Churer Stadtbier", description: "33 cl", price: 7, available: true, vegetarian: true, vegan: true, spicy: false, sort_order: 1 },
+  { id: "i1", restaurant_id: "demo", category_id: "c1", name: "Burrata & Pfirsich", description: "Basilikumöl, geröstete Mandeln, Sauerteig", price: 18, available: true, vegetarian: true, vegan: false, spicy: false, sort_order: 0, image_url: null },
+  { id: "i2", restaurant_id: "demo", category_id: "c1", name: "Luma Hummus", description: "Geröstete Kichererbsen, Za'atar, Fladenbrot", price: 14, available: true, vegetarian: true, vegan: true, spicy: false, sort_order: 1, image_url: null },
+  { id: "i3", restaurant_id: "demo", category_id: "c2", name: "Zitronen-Risotto", description: "Erbsen, Pecorino, Minze", price: 27, available: true, vegetarian: true, vegan: false, spicy: false, sort_order: 0, image_url: null },
+  { id: "i4", restaurant_id: "demo", category_id: "c2", name: "Harissa Poulet", description: "Couscous, Aprikose, Joghurt", price: 32, available: true, vegetarian: false, vegan: false, spicy: true, sort_order: 1, image_url: null },
+  { id: "i5", restaurant_id: "demo", category_id: "c3", name: "Hausgemachte Limonade", description: "Zitrone, Rosmarin, wenig Zucker", price: 6.5, available: true, vegetarian: true, vegan: true, spicy: false, sort_order: 0, image_url: null },
+  { id: "i6", restaurant_id: "demo", category_id: "c3", name: "Churer Stadtbier", description: "33 cl", price: 7, available: true, vegetarian: true, vegan: true, spicy: false, sort_order: 1, image_url: null },
 ];
+
+const imageTypes=["image/jpeg","image/png","image/webp"];
+function imageError(file:File){if(!imageTypes.includes(file.type))return"Bitte JPG, PNG oder WebP verwenden.";if(file.size>5*1024*1024)return"Das Bild darf maximal 5 MB gross sein.";return""}
+async function uploadImage(file:File,ownerId:string,folder:string){const validation=imageError(file);if(validation)throw new Error(validation);const extension=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${ownerId}/${folder}/${crypto.randomUUID()}.${extension}`;const{error}=await supabase!.storage.from("menu-assets").upload(path,file,{cacheControl:"3600",upsert:false});if(error)throw error;return supabase!.storage.from("menu-assets").getPublicUrl(path).data.publicUrl}
+function useImagePreview(file:File|null,fallback:string|null){const url=useMemo(()=>file?URL.createObjectURL(file):fallback||"",[file,fallback]);useEffect(()=>()=>{if(file)URL.revokeObjectURL(url)},[file,url]);return url}
 
 function money(value: number, currency: string) {
   return new Intl.NumberFormat("de-CH", { style: "currency", currency }).format(value);
@@ -160,7 +166,7 @@ function Dashboard() {
       <header className="dash-header"><div><span className="dash-overline">MENÜVERWALTUNG</span><h1>Was gibt&apos;s heute?</h1></div><div className="dash-actions"><button className={`status-button ${restaurant.published?"live":""}`} onClick={togglePublished}><span/>{restaurant.published?"Veröffentlicht":"Entwurf"}</button><a className="button button-dark" href={`#/m/${restaurant.slug}`}><Eye size={17}/> Menü ansehen</a></div></header>
       <div className="share-card"><div className="share-icon"><Globe2/></div><div><b>Deine öffentliche Menükarte</b><span>{menuUrl}</span></div><div className="share-actions"><button onClick={()=>{navigator.clipboard.writeText(menuUrl);flash("Link kopiert")}}><Copy size={17}/> Link kopieren</button><button onClick={()=>setQrModal(true)}><QrCode size={17}/> QR-Code drucken</button></div></div>
       <div className="dash-toolbar"><div><h2>Menüeinträge <span>{items.length}</span></h2><p>Organisiere dein Angebot nach Kategorien.</p></div><div><button className="button button-outline" onClick={()=>setCategoryModal(true)}><Plus size={16}/> Kategorie</button><button className="button button-primary" onClick={()=>{setEditing(null);setItemModal(true)}}><Plus size={17}/> Eintrag hinzufügen</button></div></div>
-      <div className="menu-board">{categories.length===0?<EmptyState onCategory={()=>setCategoryModal(true)}/>:categories.map(cat=><section className="category-block" key={cat.id}><div className="category-title"><h3>{cat.name}</h3><span>{items.filter(i=>i.category_id===cat.id).length} Einträge</span></div><div className="item-table">{items.filter(i=>i.category_id===cat.id).map(item=><article className={!item.available?"unavailable":""} key={item.id}><div className="item-thumb">{item.name.slice(0,1)}</div><div className="item-info"><b>{item.name}</b><span>{item.description || "Keine Beschreibung"}</span><div>{item.vegan&&<small>Vegan</small>}{item.vegetarian&&!item.vegan&&<small>Vegetarisch</small>}{item.spicy&&<small>Scharf</small>}</div></div><strong>{money(item.price,restaurant.currency)}</strong><label className="switch"><input type="checkbox" checked={item.available} onChange={()=>toggleAvailable(item)}/><span/></label><button className="icon-button" onClick={()=>{setEditing(item);setItemModal(true)}} aria-label="Bearbeiten"><Pencil size={16}/></button><button className="icon-button danger" onClick={()=>remove(item)} aria-label="Löschen"><Trash2 size={16}/></button></article>)}{items.filter(i=>i.category_id===cat.id).length===0&&<div className="empty-row">Noch keine Einträge in dieser Kategorie.</div>}</div></section>)}</div>
+      <div className="menu-board">{categories.length===0?<EmptyState onCategory={()=>setCategoryModal(true)}/>:categories.map(cat=><section className="category-block" key={cat.id}><div className="category-title"><h3>{cat.name}</h3><span>{items.filter(i=>i.category_id===cat.id).length} Einträge</span></div><div className="item-table">{items.filter(i=>i.category_id===cat.id).map(item=><article className={!item.available?"unavailable":""} key={item.id}><div className={`item-thumb ${item.image_url?"has-image":""}`}>{item.image_url?<img src={item.image_url} alt=""/>:item.name.slice(0,1)}</div><div className="item-info"><b>{item.name}</b><span>{item.description || "Keine Beschreibung"}</span><div>{item.vegan&&<small>Vegan</small>}{item.vegetarian&&!item.vegan&&<small>Vegetarisch</small>}{item.spicy&&<small>Scharf</small>}</div></div><strong>{money(item.price,restaurant.currency)}</strong><label className="switch"><input type="checkbox" checked={item.available} onChange={()=>toggleAvailable(item)}/><span/></label><button className="icon-button" onClick={()=>{setEditing(item);setItemModal(true)}} aria-label="Bearbeiten"><Pencil size={16}/></button><button className="icon-button danger" onClick={()=>remove(item)} aria-label="Löschen"><Trash2 size={16}/></button></article>)}{items.filter(i=>i.category_id===cat.id).length===0&&<div className="empty-row">Noch keine Einträge in dieser Kategorie.</div>}</div></section>)}</div>
     </section>
     <section className={`dash-main restaurant-settings-page ${dashboardSection==="restaurant"?"":"hidden-section"}`}>
       <RestaurantSettingsPage restaurant={restaurant} menuUrl={menuUrl} onTogglePublished={togglePublished} onSaved={updated=>{setRestaurant(updated);flash("Restaurant aktualisiert")}}/>
@@ -194,17 +200,18 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
   const [name,setName]=useState(restaurant.name); const [description,setDescription]=useState(restaurant.description||"");
   const [location,setLocation]=useState(restaurant.location||""); const [currency,setCurrency]=useState(restaurant.currency);
   const [slug,setSlug]=useState(restaurant.slug); const [accentColor,setAccentColor]=useState(restaurant.accent_color);
+  const [logoFile,setLogoFile]=useState<File|null>(null); const [bannerFile,setBannerFile]=useState<File|null>(null);
   const [busy,setBusy]=useState(false); const [error,setError]=useState("");
+  const logoPreview=useImagePreview(logoFile,restaurant.logo_url); const bannerPreview=useImagePreview(bannerFile,restaurant.banner_url);
   async function submit(e:FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
-    const cleanSlug=slugify(slug);
-    const {data, error:updateError}=await supabase!.from("restaurants").update({
-      name:name.trim(), description:description.trim()||null, location:location.trim()||null,
-      currency, slug:cleanSlug, accent_color:accentColor,
-    }).eq("id",restaurant.id).select().single();
-    setBusy(false);
-    if(updateError){setError(updateError.code==="23505"?"Dieser Menü-Link ist bereits vergeben.":updateError.message);return}
-    onSaved(data as Restaurant);
+    try{
+      const[logoUrl,bannerUrl]=await Promise.all([logoFile?uploadImage(logoFile,restaurant.owner_id,"restaurant/logo"):restaurant.logo_url,bannerFile?uploadImage(bannerFile,restaurant.owner_id,"restaurant/banner"):restaurant.banner_url]);
+      const cleanSlug=slugify(slug);
+      const {data,error:updateError}=await supabase!.from("restaurants").update({name:name.trim(),description:description.trim()||null,location:location.trim()||null,currency,slug:cleanSlug,accent_color:accentColor,logo_url:logoUrl,banner_url:bannerUrl}).eq("id",restaurant.id).select().single();
+      if(updateError)throw updateError;
+      setLogoFile(null);setBannerFile(null);onSaved(data as Restaurant);
+    }catch(uploadError){const details=typeof uploadError==="object"&&uploadError?uploadError as {message?:string;code?:string}:{};setError(details.code==="23505"?"Dieser Menü-Link ist bereits vergeben.":details.message||"Upload fehlgeschlagen.")}finally{setBusy(false)}
   }
   const previewUrl=menuUrl.replace(restaurant.slug,slug||restaurant.slug);
   return <div className="settings-page">
@@ -229,12 +236,19 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
             <label className="color-field">Akzentfarbe<div><input type="color" value={accentColor} onChange={e=>setAccentColor(e.target.value)}/><input value={accentColor} pattern="#[0-9a-fA-F]{6}" onChange={e=>setAccentColor(e.target.value)}/></div></label>
             <div className="color-swatches">{["#ff5c35","#147d64","#2764d8","#8d45b5","#c18b24"].map(color=><button key={color} type="button" className={accentColor.toLowerCase()===color?"selected":""} style={{background:color}} onClick={()=>setAccentColor(color)} aria-label={`Farbe ${color}`}/>)}</div>
           </section>
+          <section className="settings-card">
+            <div className="settings-card-head"><span>04</span><div><h2>Logo & Banner</h2><p>Personalisiere den Kopfbereich deiner öffentlichen Karte.</p></div></div>
+            <div className="media-upload-grid">
+              <label className="media-upload logo-upload"><span>Restaurantlogo</span><div>{logoPreview?<img src={logoPreview} alt="Logo-Vorschau"/>:<ImagePlus/>}<b><UploadCloud size={16}/> Logo auswählen</b><small>Quadratisch · JPG, PNG oder WebP · max. 5 MB</small></div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setLogoFile(e.target.files?.[0]||null)}/></label>
+              <label className="media-upload banner-upload"><span>Bannerbild</span><div style={bannerPreview?{backgroundImage:`linear-gradient(#17201b22,#17201b22),url(${bannerPreview})`}:undefined}>{!bannerPreview&&<ImagePlus/>}<b><UploadCloud size={16}/> Banner auswählen</b><small>Breites Querformat empfohlen · max. 5 MB</small></div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setBannerFile(e.target.files?.[0]||null)}/></label>
+            </div>
+          </section>
         </div>
         <aside className="settings-preview">
           <div className="settings-preview-label"><span>LIVE-VORSCHAU</span><small>Wird beim Tippen aktualisiert</small></div>
           <div className="settings-preview-window" style={{"--preview-accent":accentColor} as React.CSSProperties}>
             <div className="preview-browser"><i/><i/><i/><span>menuva</span></div>
-            <div className="preview-hero"><small>{location||"DEIN STANDORT"}</small><h3>{name||"Dein Restaurant"}</h3><p>{description||"Deine Restaurantbeschreibung erscheint hier."}</p><div>{(name||"R").slice(0,1)}</div></div>
+            <div className={`preview-hero ${bannerPreview?"has-banner":""}`} style={bannerPreview?{backgroundImage:`linear-gradient(90deg,#183f34ee,#183f3488),url(${bannerPreview})`}:undefined}>{logoPreview&&<img className="preview-logo" src={logoPreview} alt=""/>}<small>{location||"DEIN STANDORT"}</small><h3>{name||"Dein Restaurant"}</h3><p>{description||"Deine Restaurantbeschreibung erscheint hier."}</p>{!bannerPreview&&<div>{(name||"R").slice(0,1)}</div>}</div>
             <div className="preview-tabs"><b>Alles</b><span>Speisen</span><span>Getränke</span></div>
             <div className="preview-dishes"><article><div><b>Dein erster Menüeintrag</b><small>Beschreibung und Zutaten</small></div><strong>{money(24,currency)}</strong></article><article><div><b>Hausgemachte Spezialität</b><small>Frisch für deine Gäste</small></div><strong>{money(16,currency)}</strong></article></div>
           </div>
@@ -247,7 +261,19 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
 }
 
 function CategoryModal({restaurant,count,onClose,onSaved}:{restaurant:Restaurant;count:number;onClose:()=>void;onSaved:()=>void}){const[name,setName]=useState("");async function submit(e:FormEvent){e.preventDefault();await supabase!.from("categories").insert({restaurant_id:restaurant.id,name,sort_order:count});onSaved()}return <Modal title="Neue Kategorie" onClose={onClose}><form onSubmit={submit}><label>Name<input autoFocus required value={name} onChange={e=>setName(e.target.value)} placeholder="z. B. Desserts"/></label><button className="button button-primary button-full">Kategorie erstellen</button></form></Modal>}
-function ItemModal({restaurant,categories,item,count,onClose,onSaved}:{restaurant:Restaurant;categories:Category[];item:MenuItem|null;count:number;onClose:()=>void;onSaved:()=>void}){const[name,setName]=useState(item?.name||"");const[description,setDescription]=useState(item?.description||"");const[price,setPrice]=useState(String(item?.price||""));const[category,setCategory]=useState(item?.category_id||categories[0]?.id||"");const[vegetarian,setVegetarian]=useState(item?.vegetarian||false);const[vegan,setVegan]=useState(item?.vegan||false);const[spicy,setSpicy]=useState(item?.spicy||false);async function submit(e:FormEvent){e.preventDefault();const payload={restaurant_id:restaurant.id,category_id:category,name,description,price:Number(price),vegetarian:vegetarian||vegan,vegan,spicy,sort_order:item?.sort_order??count};if(item)await supabase!.from("menu_items").update(payload).eq("id",item.id);else await supabase!.from("menu_items").insert(payload);onSaved()}return <Modal title={item?"Eintrag bearbeiten":"Neuer Menüeintrag"} onClose={onClose}><form onSubmit={submit}><div className="form-grid"><label>Bezeichnung<input autoFocus required value={name} onChange={e=>setName(e.target.value)} placeholder="Zitronen-Risotto"/></label><label>Kategorie<select required value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label></div><label>Beschreibung<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Zutaten oder kurze Beschreibung" rows={3}/></label><label>Preis ({restaurant.currency})<input type="number" min="0" step="0.05" required value={price} onChange={e=>setPrice(e.target.value)} placeholder="24.50"/></label><div className="check-row"><label><input type="checkbox" checked={vegetarian} onChange={e=>setVegetarian(e.target.checked)}/>Vegetarisch</label><label><input type="checkbox" checked={vegan} onChange={e=>setVegan(e.target.checked)}/>Vegan</label><label><input type="checkbox" checked={spicy} onChange={e=>setSpicy(e.target.checked)}/>Scharf</label></div><button className="button button-primary button-full">{item?"Änderungen speichern":"Eintrag hinzufügen"}</button></form></Modal>}
+function ItemModal({restaurant,categories,item,count,onClose,onSaved}:{restaurant:Restaurant;categories:Category[];item:MenuItem|null;count:number;onClose:()=>void;onSaved:()=>void}) {
+  const[name,setName]=useState(item?.name||"");const[description,setDescription]=useState(item?.description||"");const[price,setPrice]=useState(String(item?.price||""));const[category,setCategory]=useState(item?.category_id||categories[0]?.id||"");
+  const[vegetarian,setVegetarian]=useState(item?.vegetarian||false);const[vegan,setVegan]=useState(item?.vegan||false);const[spicy,setSpicy]=useState(item?.spicy||false);const[imageFile,setImageFile]=useState<File|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState("");
+  const imagePreview=useImagePreview(imageFile,item?.image_url||null);
+  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const imageUrl=imageFile?await uploadImage(imageFile,restaurant.owner_id,"items"):item?.image_url||null;const payload={restaurant_id:restaurant.id,category_id:category,name,description,price:Number(price),vegetarian:vegetarian||vegan,vegan,spicy,image_url:imageUrl,sort_order:item?.sort_order??count};const{error:saveError}=item?await supabase!.from("menu_items").update(payload).eq("id",item.id):await supabase!.from("menu_items").insert(payload);if(saveError)throw saveError;onSaved()}catch(saveError){setError(typeof saveError==="object"&&saveError&&"message" in saveError?String(saveError.message):"Bild oder Eintrag konnte nicht gespeichert werden.")}finally{setBusy(false)}}
+  return <Modal title={item?"Eintrag bearbeiten":"Neuer Menüeintrag"} onClose={onClose}><form onSubmit={submit}>
+    <label className="dish-image-upload"><span>Bild des Gerichts</span><div className={imagePreview?"has-image":""} style={imagePreview?{backgroundImage:`linear-gradient(#17201b33,#17201b33),url(${imagePreview})`}:undefined}>{!imagePreview&&<ImagePlus/>}<b><UploadCloud size={17}/> {imagePreview?"Bild ersetzen":"Bild auswählen"}</b><small>JPG, PNG oder WebP · maximal 5 MB</small></div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setImageFile(e.target.files?.[0]||null)}/></label>
+    <div className="form-grid"><label>Bezeichnung<input autoFocus required value={name} onChange={e=>setName(e.target.value)} placeholder="Zitronen-Risotto"/></label><label>Kategorie<select required value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label></div>
+    <label>Beschreibung<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Zutaten oder kurze Beschreibung" rows={3}/></label><label>Preis ({restaurant.currency})<input type="number" min="0" step="0.05" required value={price} onChange={e=>setPrice(e.target.value)} placeholder="24.50"/></label>
+    <div className="check-row"><label><input type="checkbox" checked={vegetarian} onChange={e=>setVegetarian(e.target.checked)}/>Vegetarisch</label><label><input type="checkbox" checked={vegan} onChange={e=>setVegan(e.target.checked)}/>Vegan</label><label><input type="checkbox" checked={spicy} onChange={e=>setSpicy(e.target.checked)}/>Scharf</label></div>
+    {error&&<p className="form-message">{error}</p>}<button className="button button-primary button-full" disabled={busy}>{busy&&<Loader2 size={17} className="spin"/>}{item?"Änderungen speichern":"Eintrag hinzufügen"}</button>
+  </form></Modal>
+}
 function Modal({title,onClose,children}:{title:string;onClose:()=>void;children:React.ReactNode}){return <div className="modal-backdrop" onMouseDown={e=>{if(e.currentTarget===e.target)onClose()}}><div className="modal"><div className="modal-head"><h2>{title}</h2><button className="icon-button" onClick={onClose}><X/></button></div>{children}</div></div>}
 
 function PublicMenu({slug}:{slug:string}) {
@@ -255,5 +281,15 @@ function PublicMenu({slug}:{slug:string}) {
   useEffect(()=>{if(slug==="demo")return;(async()=>{if(!supabase){setLoading(false);return}const{data:r}=await supabase.from("restaurants").select("*").eq("slug",slug).eq("published",true).maybeSingle();if(r){setRestaurant(r);const[{data:c},{data:i}]=await Promise.all([supabase.from("categories").select("*").eq("restaurant_id",r.id).order("sort_order"),supabase.from("menu_items").select("*").eq("restaurant_id",r.id).eq("available",true).order("sort_order")]);setCategories(c||[]);setItems(i||[])}setLoading(false)})()},[slug]);
   const visible=useMemo(()=>items.filter(i=>(active==="all"||i.category_id===active)&&(`${i.name} ${i.description}`).toLowerCase().includes(query.toLowerCase())),[items,active,query]);
   if(loading)return <div className="center-page"><Loader2 className="spin"/></div>;if(!restaurant)return <div className="center-page"><Logo/><h1>Menü nicht gefunden</h1><p>Diese Karte ist nicht veröffentlicht oder existiert nicht.</p><a className="button button-dark" href="#/">Zu Menuva</a></div>;
-  return <main className="public-menu" style={{"--accent":restaurant.accent_color} as React.CSSProperties}><header className="menu-hero"><nav><Logo/><a href="#/" className="powered">Powered by <b>menuva</b></a></nav><div><span className="menu-location">{restaurant.location||"Willkommen"}</span><h1>{restaurant.name}</h1><p>{restaurant.description}</p></div><div className="hero-orb">{restaurant.name.slice(0,1)}</div></header><div className="menu-sticky"><div className="category-scroll"><button className={active==="all"?"active":""} onClick={()=>setActive("all")}>Alles</button>{categories.map(c=><button className={active===c.id?"active":""} onClick={()=>setActive(c.id)} key={c.id}>{c.name}</button>)}</div><label className="menu-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Gericht suchen"/></label></div><section className="menu-content">{categories.filter(c=>active==="all"||active===c.id).map(category=>{const group=visible.filter(i=>i.category_id===category.id);if(!group.length)return null;return <section key={category.id} className="public-category"><div className="public-category-head"><span>{String(category.sort_order+1).padStart(2,"0")}</span><h2>{category.name}</h2></div><div className="public-items">{group.map(item=><article key={item.id}><div><div className="public-item-title"><h3>{item.name}</h3><strong>{money(item.price,restaurant.currency)}</strong></div><p>{item.description}</p><div className="diet-tags">{item.vegan&&<span><Leaf size={12}/> Vegan</span>}{item.vegetarian&&!item.vegan&&<span><Leaf size={12}/> Vegetarisch</span>}{item.spicy&&<span>🌶 Scharf</span>}</div></div></article>)}</div></section>})}{visible.length===0&&<div className="no-results"><Search/><h3>Nichts gefunden</h3><p>Versuch es mit einem anderen Suchbegriff.</p></div>}</section><footer className="menu-footer"><div><Logo inverse/><p>Digitale Menükarten. Kostenlos und Open Source.</p></div><a href="#/login">Eigenes Menü erstellen <ArrowRight size={16}/></a></footer></main>;
+  const heroStyle=restaurant.banner_url?{backgroundImage:`linear-gradient(90deg,#183f34f2,#183f3494),url(${restaurant.banner_url})`}:undefined;
+  return <main className="public-menu" style={{"--accent":restaurant.accent_color} as React.CSSProperties}>
+    <header className={`menu-hero ${restaurant.banner_url?"has-banner":""}`} style={heroStyle}>
+      <nav className="restaurant-menu-nav"><a href="#/" className="powered">Powered by <b>menuva</b></a></nav>
+      <div>{restaurant.logo_url&&<img className="restaurant-public-logo" src={restaurant.logo_url} alt={`${restaurant.name} Logo`}/>}<span className="menu-location">{restaurant.location||"Willkommen"}</span><h1>{restaurant.name}</h1><p>{restaurant.description}</p></div>
+      {!restaurant.banner_url&&<div className="hero-orb">{restaurant.name.slice(0,1)}</div>}
+    </header>
+    <div className="menu-sticky"><div className="category-scroll"><button className={active==="all"?"active":""} onClick={()=>setActive("all")}>Alles</button>{categories.map(c=><button className={active===c.id?"active":""} onClick={()=>setActive(c.id)} key={c.id}>{c.name}</button>)}</div><label className="menu-search"><Search size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Gericht suchen"/></label></div>
+    <section className="menu-content">{categories.filter(c=>active==="all"||active===c.id).map(category=>{const group=visible.filter(i=>i.category_id===category.id);if(!group.length)return null;return <section key={category.id} className="public-category"><div className="public-category-head"><span>{String(category.sort_order+1).padStart(2,"0")}</span><h2>{category.name}</h2></div><div className="public-items">{group.map(item=><article key={item.id} className={item.image_url?"with-image":""}>{item.image_url&&<img className="public-item-image" src={item.image_url} alt={item.name}/>}<div><div className="public-item-title"><h3>{item.name}</h3><strong>{money(item.price,restaurant.currency)}</strong></div><p>{item.description}</p><div className="diet-tags">{item.vegan&&<span><Leaf size={12}/> Vegan</span>}{item.vegetarian&&!item.vegan&&<span><Leaf size={12}/> Vegetarisch</span>}{item.spicy&&<span>🌶 Scharf</span>}</div></div></article>)}</div></section>})}{visible.length===0&&<div className="no-results"><Search/><h3>Nichts gefunden</h3><p>Versuch es mit einem anderen Suchbegriff.</p></div>}</section>
+    <footer className="menu-footer restaurant-menu-footer"><div><b>{restaurant.name}</b><p>{restaurant.location||"Digitale Speisekarte"}</p></div><a href="#/m/" onClick={e=>{e.preventDefault();window.scrollTo({top:0,behavior:"smooth"})}}>Nach oben <ArrowRight size={16}/></a></footer>
+  </main>;
 }

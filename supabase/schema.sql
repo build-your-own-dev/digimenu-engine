@@ -41,6 +41,33 @@ create table if not exists public.menu_items (
   updated_at timestamptz not null default now()
 );
 
+-- Media fields (safe to run for existing Menuva projects)
+alter table public.restaurants add column if not exists logo_url text;
+alter table public.restaurants add column if not exists banner_url text;
+alter table public.menu_items add column if not exists image_url text;
+
+-- Public assets; owners may only write inside their own user-id folder.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('menu-assets', 'menu-assets', true, 5242880, array['image/jpeg','image/png','image/webp'])
+on conflict (id) do update set public = true, file_size_limit = excluded.file_size_limit, allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "Menu assets are public" on storage.objects;
+create policy "Menu assets are public" on storage.objects for select
+using (bucket_id = 'menu-assets');
+
+drop policy if exists "Owners upload menu assets" on storage.objects;
+create policy "Owners upload menu assets" on storage.objects for insert to authenticated
+with check (bucket_id = 'menu-assets' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Owners update menu assets" on storage.objects;
+create policy "Owners update menu assets" on storage.objects for update to authenticated
+using (bucket_id = 'menu-assets' and (storage.foldername(name))[1] = auth.uid()::text)
+with check (bucket_id = 'menu-assets' and (storage.foldername(name))[1] = auth.uid()::text);
+
+drop policy if exists "Owners delete menu assets" on storage.objects;
+create policy "Owners delete menu assets" on storage.objects for delete to authenticated
+using (bucket_id = 'menu-assets' and (storage.foldername(name))[1] = auth.uid()::text);
+
 create index if not exists categories_restaurant_idx on public.categories(restaurant_id, sort_order);
 create index if not exists menu_items_restaurant_idx on public.menu_items(restaurant_id, category_id, sort_order);
 create index if not exists restaurants_slug_idx on public.restaurants(slug);
