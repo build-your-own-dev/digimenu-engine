@@ -1,11 +1,13 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- Generated QR data URLs are intentionally rendered as printable images. */
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight, Check, ChevronDown, CircleCheck, Copy, ExternalLink, Eye,
+  ArrowRight, Check, ChevronDown, CircleCheck, Copy, Download, ExternalLink, Eye,
   Globe2, LayoutDashboard, Leaf, Loader2, LogOut, Menu, Pencil, Plus,
   QrCode, Search, Settings, Sparkles, Trash2, UtensilsCrossed, X,
 } from "lucide-react";
+import QRCode from "qrcode";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 
 type Restaurant = {
@@ -111,7 +113,7 @@ function Auth() {
 function Dashboard() {
   const [loading, setLoading] = useState(true); const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]); const [items, setItems] = useState<MenuItem[]>([]);
-  const [itemModal, setItemModal] = useState(false); const [categoryModal, setCategoryModal] = useState(false);
+  const [itemModal, setItemModal] = useState(false); const [categoryModal, setCategoryModal] = useState(false); const [qrModal, setQrModal] = useState(false);
   const [dashboardSection, setDashboardSection] = useState<"menu" | "restaurant">("menu");
   const [editing, setEditing] = useState<MenuItem | null>(null); const [notice, setNotice] = useState("");
   const load = useCallback(async () => {
@@ -156,7 +158,7 @@ function Dashboard() {
     </aside>
     <section className={`dash-main ${dashboardSection==="menu"?"":"hidden-section"}`}>
       <header className="dash-header"><div><span className="dash-overline">MENÜVERWALTUNG</span><h1>Was gibt&apos;s heute?</h1></div><div className="dash-actions"><button className={`status-button ${restaurant.published?"live":""}`} onClick={togglePublished}><span/>{restaurant.published?"Veröffentlicht":"Entwurf"}</button><a className="button button-dark" href={`#/m/${restaurant.slug}`}><Eye size={17}/> Menü ansehen</a></div></header>
-      <div className="share-card"><div className="share-icon"><Globe2/></div><div><b>Deine öffentliche Menükarte</b><span>{menuUrl}</span></div><button onClick={()=>{navigator.clipboard.writeText(menuUrl);flash("Link kopiert")}}><Copy size={17}/> Link kopieren</button></div>
+      <div className="share-card"><div className="share-icon"><Globe2/></div><div><b>Deine öffentliche Menükarte</b><span>{menuUrl}</span></div><div className="share-actions"><button onClick={()=>{navigator.clipboard.writeText(menuUrl);flash("Link kopiert")}}><Copy size={17}/> Link kopieren</button><button onClick={()=>setQrModal(true)}><QrCode size={17}/> QR-Code drucken</button></div></div>
       <div className="dash-toolbar"><div><h2>Menüeinträge <span>{items.length}</span></h2><p>Organisiere dein Angebot nach Kategorien.</p></div><div><button className="button button-outline" onClick={()=>setCategoryModal(true)}><Plus size={16}/> Kategorie</button><button className="button button-primary" onClick={()=>{setEditing(null);setItemModal(true)}}><Plus size={17}/> Eintrag hinzufügen</button></div></div>
       <div className="menu-board">{categories.length===0?<EmptyState onCategory={()=>setCategoryModal(true)}/>:categories.map(cat=><section className="category-block" key={cat.id}><div className="category-title"><h3>{cat.name}</h3><span>{items.filter(i=>i.category_id===cat.id).length} Einträge</span></div><div className="item-table">{items.filter(i=>i.category_id===cat.id).map(item=><article className={!item.available?"unavailable":""} key={item.id}><div className="item-thumb">{item.name.slice(0,1)}</div><div className="item-info"><b>{item.name}</b><span>{item.description || "Keine Beschreibung"}</span><div>{item.vegan&&<small>Vegan</small>}{item.vegetarian&&!item.vegan&&<small>Vegetarisch</small>}{item.spicy&&<small>Scharf</small>}</div></div><strong>{money(item.price,restaurant.currency)}</strong><label className="switch"><input type="checkbox" checked={item.available} onChange={()=>toggleAvailable(item)}/><span/></label><button className="icon-button" onClick={()=>{setEditing(item);setItemModal(true)}} aria-label="Bearbeiten"><Pencil size={16}/></button><button className="icon-button danger" onClick={()=>remove(item)} aria-label="Löschen"><Trash2 size={16}/></button></article>)}{items.filter(i=>i.category_id===cat.id).length===0&&<div className="empty-row">Noch keine Einträge in dieser Kategorie.</div>}</div></section>)}</div>
     </section>
@@ -164,12 +166,22 @@ function Dashboard() {
       <RestaurantSettingsPage restaurant={restaurant} menuUrl={menuUrl} onTogglePublished={togglePublished} onSaved={updated=>{setRestaurant(updated);flash("Restaurant aktualisiert")}}/>
     </section>
     {notice&&<div className="toast"><Check size={17}/>{notice}</div>}
+    {qrModal&&<QrCodeModal menuUrl={menuUrl} restaurantName={restaurant.name} onClose={()=>setQrModal(false)}/>}
     {categoryModal&&<CategoryModal restaurant={restaurant} count={categories.length} onClose={()=>setCategoryModal(false)} onSaved={()=>{setCategoryModal(false);load();flash("Kategorie erstellt")}}/>}
     {itemModal&&<ItemModal restaurant={restaurant} categories={categories} item={editing} count={items.length} onClose={()=>setItemModal(false)} onSaved={()=>{setItemModal(false);load();flash(editing?"Eintrag aktualisiert":"Eintrag erstellt")}}/>}
   </main>;
 }
 
 function SetupNeeded(){return <div className="center-page setup-needed"><Logo/><h1>Supabase verbinden</h1><p>Kopiere <code>.env.example</code> zu <code>.env.local</code>, trage URL und Anon Key ein und führe <code>supabase/schema.sql</code> im SQL Editor aus.</p><a className="button button-dark" href="#/m/demo">Erst das Demo-Menü ansehen</a></div>}
+function QrCodeModal({menuUrl,restaurantName,onClose}:{menuUrl:string;restaurantName:string;onClose:()=>void}) {
+  const [qrDataUrl,setQrDataUrl]=useState("");
+  useEffect(()=>{
+    let active=true;
+    void QRCode.toDataURL(menuUrl,{width:900,margin:3,errorCorrectionLevel:"H",color:{dark:"#17201b",light:"#ffffff"}}).then(url=>{if(active)setQrDataUrl(url)});
+    return()=>{active=false};
+  },[menuUrl]);
+  return <div className="qr-modal-backdrop" onMouseDown={e=>{if(e.currentTarget===e.target)onClose()}}><div className="qr-modal"><div className="qr-modal-head"><div><span className="section-kicker">DEINE MENÜKARTE</span><h2>QR-Code für {restaurantName}</h2></div><button className="icon-button no-print" onClick={onClose} aria-label="Schliessen"><X/></button></div><div className="qr-print-sheet">{qrDataUrl?<img src={qrDataUrl} alt={`QR-Code für ${restaurantName}`}/>:<div className="qr-loading"><Loader2 className="spin"/><span>QR-Code wird erstellt …</span></div>}<div><h3>{restaurantName}</h3><p>Scannen und digitale Menükarte öffnen</p></div></div><p className="qr-url">{menuUrl}</p><div className="qr-modal-actions no-print"><button className="button button-outline" onClick={onClose}>Schliessen</button>{qrDataUrl&&<a className="button button-outline" href={qrDataUrl} download={`${slugify(restaurantName)||"menuva"}-qr-code.png`}><Download size={17}/> PNG</a>}<button className="button button-primary" disabled={!qrDataUrl} onClick={()=>window.print()}><QrCode size={17}/> Drucken</button></div></div></div>
+}
 function EmptyState({onCategory}:{onCategory:()=>void}){return <div className="empty-state"><div><Menu size={30}/></div><h3>Deine Karte ist noch leer</h3><p>Erstelle zuerst eine Kategorie wie „Vorspeisen“, „Hauptgerichte“ oder „Getränke“.</p><button className="button button-primary" onClick={onCategory}><Plus size={17}/> Erste Kategorie erstellen</button></div>}
 
 function RestaurantSetup({onDone}:{onDone:()=>void}) {
