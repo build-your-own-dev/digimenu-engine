@@ -4,8 +4,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight, Check, ChevronDown, CircleCheck, Copy, Download, ExternalLink, Eye,
-  Globe2, ImagePlus, LayoutDashboard, Leaf, Loader2, LogOut, Menu, Pencil, Plus,
-  QrCode, Search, Settings, Sparkles, Trash2, UploadCloud, UtensilsCrossed, X,
+  Globe2, ImagePlus, LayoutDashboard, Leaf, Loader2, LogOut, Menu, Palette, Pencil, Plus,
+  QrCode, RefreshCw, Search, Settings, ShieldCheck, Smartphone, Sparkles, Trash2, UploadCloud, UtensilsCrossed, X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { supabase, supabaseConfigured } from "../lib/supabase";
@@ -58,6 +58,8 @@ function route() {
   if (hash.startsWith("/m/")) return { page: "menu", slug: hash.slice(3) };
   if (hash === "/dashboard") return { page: "dashboard", slug: "" };
   if (hash === "/login") return { page: "login", slug: "" };
+  if (hash === "/how") return { page: "how", slug: "" };
+  if (hash === "/features") return { page: "features", slug: "" };
   return { page: "home", slug: "" };
 }
 
@@ -77,6 +79,8 @@ export default function Home() {
   if (current.page === "menu") return <PublicMenu slug={current.slug} />;
   if (current.page === "dashboard") return <Dashboard />;
   if (current.page === "login") return <Auth />;
+  if (current.page === "how") return <HowItWorksPage loggedIn={loggedIn}/>;
+  if (current.page === "features") return <FeaturesPage loggedIn={loggedIn}/>;
   return <Landing loggedIn={loggedIn} />;
 }
 
@@ -84,9 +88,13 @@ function Logo({ inverse = false }: { inverse?: boolean }) {
   return <a className={`logo ${inverse ? "logo-inverse" : ""}`} href="#/" aria-label="Menuva Startseite"><span className="logo-mark"><UtensilsCrossed size={17} /></span>menuva</a>;
 }
 
+function MarketingNav({loggedIn,active}:{loggedIn:boolean;active?:"how"|"features"}) {
+  return <nav className="nav marketing-nav"><Logo/><div className="nav-links"><a className={active==="how"?"active":""} href="#/how">So funktioniert&apos;s</a><a className={active==="features"?"active":""} href="#/features">Features</a>{loggedIn?<a className="button button-dark" href="#/dashboard"><LayoutDashboard size={16}/> Menü verwalten</a>:<><a className="button button-quiet" href="#/login">Anmelden</a><a className="button button-dark" href="#/login">Restaurant starten <ArrowRight size={16}/></a></>}</div></nav>
+}
+
 function Landing({ loggedIn }: { loggedIn: boolean }) {
   return <main className="landing">
-    <nav className="nav shell"><Logo /><div className="nav-links"><a href="#how">So funktioniert&apos;s</a><a href="#features">Features</a>{loggedIn ? <a className="button button-dark" href="#/dashboard"><LayoutDashboard size={16}/> Menü verwalten</a> : <><a className="button button-quiet" href="#/login">Anmelden</a><a className="button button-dark" href="#/login">Restaurant starten <ArrowRight size={16} /></a></>}</div></nav>
+    <MarketingNav loggedIn={loggedIn}/>
     <section className="hero shell">
       <div className="hero-copy"><div className="eyebrow"><Sparkles size={14} /> Kostenlos · Open Source · Ohne Provision</div><h1>Deine Speisekarte.<br/><em>Einfach digital.</em></h1><p>Erstelle in Minuten eine schöne, mobile Menükarte. Änderungen sind sofort online – ohne App-Download, ohne Monatsabo.</p><div className="hero-actions"><a className="button button-primary button-large" href={loggedIn ? "#/dashboard" : "#/login"}>{loggedIn ? <><LayoutDashboard size={18}/> Menü verwalten</> : <>Kostenlos loslegen <ArrowRight size={18}/></>}</a><a className="text-link" href="#/m/demo">Beispielmenü ansehen <ExternalLink size={15}/></a></div><div className="trust-row"><span><Check size={15}/> Unbegrenzt Gerichte</span><span><Check size={15}/> Eigener QR-Code</span><span><Check size={15}/> Immer kostenlos</span></div></div>
       <div className="hero-visual" aria-label="Vorschau einer digitalen Speisekarte"><div className="sun-shape"/><div className="leaf leaf-one">◆</div><div className="leaf leaf-two">◆</div><div className="phone"><div className="phone-bar"><span>9:41</span><span>● ● ▰</span></div><div className="phone-menu"><span className="tiny-label">CASA LUMA</span><h3>Heute wird&apos;s<br/>richtig gut.</h3><div className="phone-tabs"><b>Beliebt</b><span>Lunch</span><span>Drinks</span></div><div className="dish"><div className="dish-art art-one">🍋</div><div><b>Zitronen-Risotto</b><small>Erbsen · Pecorino · Minze</small><strong>CHF 27.–</strong></div></div><div className="dish"><div className="dish-art art-two">🌶️</div><div><b>Harissa Poulet</b><small>Couscous · Aprikose</small><strong>CHF 32.–</strong></div></div></div></div><div className="float-card qr-float"><QrCode size={33}/><div><b>Scannen.</b><span>Geniessen.</span></div></div><div className="float-card update-float"><CircleCheck size={22}/><div><b>Menü aktualisiert</b><span>Gerade eben</span></div></div>
@@ -98,6 +106,41 @@ function Landing({ loggedIn }: { loggedIn: boolean }) {
     <section className="cta shell"><div><span className="section-kicker">BEREIT ZU SERVIEREN?</span><h2>Dein Menü gehört<br/>ins Jetzt.</h2><p>Kein Abo. Keine Kreditkarte. Keine Ausreden.</p></div><a className="button button-dark button-large" href={loggedIn ? "#/dashboard" : "#/login"}>{loggedIn ? <>Menü verwalten <ArrowRight size={18}/></> : <>Restaurant kostenlos erstellen <ArrowRight size={18}/></>}</a></section>
     <footer className="footer shell"><Logo/><p>Open Source. Für Restaurants gemacht.</p><a href="https://github.com" target="_blank" rel="noreferrer">GitHub</a></footer>
   </main>;
+}
+
+function MarketingFooter(){return <footer className="footer shell marketing-footer"><Logo/><p>Open Source. Für Restaurants gemacht.</p><a href="#/">Zur Startseite</a></footer>}
+
+function HowItWorksPage({loggedIn}:{loggedIn:boolean}) {
+  return <main className="marketing-page how-page">
+    <MarketingNav loggedIn={loggedIn} active="how"/>
+    <header className="marketing-page-hero shell"><span className="section-kicker">SO FUNKTIONIERT&apos;S</span><h1>Drei Schritte.<br/><em>Ein fertiges Menü.</em></h1><p>Von der Registrierung bis zum QR-Code auf dem Tisch – ohne technisches Wissen und ohne komplizierte Einrichtung.</p><a className="button button-primary button-large" href={loggedIn?"#/dashboard":"#/login"}>{loggedIn?"Menü verwalten":"Restaurant erstellen"}<ArrowRight size={18}/></a></header>
+    <section className="process-journey shell">
+      <article><div className="process-number">01</div><div className="process-copy"><span>GRUNDLAGE</span><h2>Restaurant einrichten</h2><p>Trage Name, Standort und Beschreibung ein. Lade dein eigenes Logo und ein Bannerbild hoch und wähle die Akzentfarbe, die zu deinem Restaurant passt.</p><ul><li><Check/> Eigener Restaurantname und Link</li><li><Check/> Logo, Banner und Branding</li><li><Check/> Währung und Standort</li></ul></div><div className="process-visual restaurant-setup-visual"><div className="mini-brand"><span>C</span><div><b>Casa Luma</b><small>Chur, Schweiz</small></div></div><div className="mini-field"><small>RESTAURANTNAME</small><b>Casa Luma</b></div><div className="mini-colors"><i/><i/><i/><i/></div></div></article>
+      <article><div className="process-number">02</div><div className="process-copy"><span>INHALT</span><h2>Menü zusammenstellen</h2><p>Erstelle Kategorien für Speisen und Getränke. Ergänze Namen, Beschreibungen, Preise, Eigenschaften und eigene Bilder.</p><ul><li><Check/> Unbegrenzt viele Einträge</li><li><Check/> Bilder und Ernährungsmerkmale</li><li><Check/> Verfügbarkeit mit einem Klick</li></ul></div><div className="process-visual menu-editor-visual"><div><span>Vorspeisen</span><small>2 Einträge</small></div><article><i>🍋</i><p><b>Burrata & Pfirsich</b><small>Basilikumöl · Mandeln</small></p><strong>CHF 18.–</strong></article><article><i>🌿</i><p><b>Luma Hummus</b><small>Za&apos;atar · Fladenbrot</small></p><strong>CHF 14.–</strong></article></div></article>
+      <article><div className="process-number">03</div><div className="process-copy"><span>VERÖFFENTLICHUNG</span><h2>Teilen und servieren</h2><p>Schalte deine Karte online, kopiere den öffentlichen Link oder erstelle direkt ein druckfertiges QR-Schild für die Tische.</p><ul><li><Check/> Sofort öffentlich erreichbar</li><li><Check/> QR-Code als PNG und Druckvorlage</li><li><Check/> Änderungen erscheinen direkt</li></ul></div><div className="process-visual publish-visual"><QrCode/><h3>Scannen & geniessen</h3><p>menuva.app/m/casa-luma</p><span><CircleCheck/> Menü veröffentlicht</span></div></article>
+    </section>
+    <section className="marketing-cta"><div className="shell"><span className="section-kicker light">BEREIT?</span><h2>Deine digitale Karte<br/>kann heute online sein.</h2><a className="button button-primary button-large" href={loggedIn?"#/dashboard":"#/login"}>{loggedIn?"Zum Dashboard":"Kostenlos loslegen"}<ArrowRight size={18}/></a></div></section>
+    <MarketingFooter/>
+  </main>
+}
+
+function FeaturesPage({loggedIn}:{loggedIn:boolean}) {
+  const features=[
+    {icon:<RefreshCw/>,title:"Sofort aktualisiert",text:"Preise ändern, Gerichte ausblenden oder neue Angebote veröffentlichen – ohne Wartezeit."},
+    {icon:<Smartphone/>,title:"Auf jedem Gerät schön",text:"Die Menükarte passt sich automatisch an Smartphones, Tablets und Desktop-Bildschirme an."},
+    {icon:<ImagePlus/>,title:"Eigene Bilder",text:"Lade Restaurantlogo, Banner und hochwertige Fotos deiner Speisen direkt hoch."},
+    {icon:<Palette/>,title:"Dein eigener Stil",text:"Akzentfarbe, Inhalte und Bilder machen jede Restaurantkarte unverwechselbar."},
+    {icon:<QrCode/>,title:"QR-Code inklusive",text:"Generiere QR-Codes, lade sie als PNG herunter oder drucke fertige Tischschilder."},
+    {icon:<ShieldCheck/>,title:"Sicher verwaltet",text:"Supabase-Anmeldung und geschützte Benutzerordner sorgen dafür, dass nur du deine Inhalte änderst."},
+  ];
+  return <main className="marketing-page features-page">
+    <MarketingNav loggedIn={loggedIn} active="features"/>
+    <header className="marketing-page-hero feature-page-hero shell"><span className="section-kicker">ALLES AN EINEM ORT</span><h1>Weniger verwalten.<br/><em>Mehr bewirten.</em></h1><p>Menuva enthält genau die Werkzeuge, die Restaurants für eine moderne digitale Speisekarte brauchen.</p><div><a className="button button-primary button-large" href={loggedIn?"#/dashboard":"#/login"}>{loggedIn?"Menü verwalten":"Kostenlos starten"}<ArrowRight size={18}/></a><a className="button button-outline button-large" href="#/m/demo">Live-Demo ansehen <ExternalLink size={17}/></a></div></header>
+    <section className="feature-page-grid shell">{features.map((feature,index)=><article key={feature.title}><span>{String(index+1).padStart(2,"0")}</span><div>{feature.icon}</div><h2>{feature.title}</h2><p>{feature.text}</p></article>)}</section>
+    <section className="feature-highlight"><div className="shell"><div><span className="section-kicker light">FÜR DEN ALLTAG</span><h2>Ein Dashboard.<br/>Alle Änderungen.</h2><p>Vom Tagesgericht bis zum ausverkauften Dessert: Du steuerst deine komplette Karte an einem Ort und deine Gäste sehen sofort den aktuellen Stand.</p><a href="#/how">So funktioniert Menuva <ArrowRight size={17}/></a></div><div className="dashboard-preview-card"><div><span>MENÜVERWALTUNG</span><b>Was gibt&apos;s heute?</b></div><section><i>V</i><p><b>Vorspeisen</b><small>3 Einträge</small></p><em>Online</em></section><section><i>H</i><p><b>Hauptgerichte</b><small>6 Einträge</small></p><em>Online</em></section><section><i>G</i><p><b>Getränke</b><small>8 Einträge</small></p><em>Online</em></section></div></div></section>
+    <section className="cta shell feature-bottom-cta"><div><span className="section-kicker">KEIN ABO. KEINE PROVISION.</span><h2>Dein Menü gehört dir.</h2><p>Open Source und kostenlos für Restaurants.</p></div><a className="button button-dark button-large" href={loggedIn?"#/dashboard":"#/login"}>{loggedIn?"Zum Dashboard":"Restaurant erstellen"}<ArrowRight size={18}/></a></section>
+    <MarketingFooter/>
+  </main>
 }
 
 function Auth() {
