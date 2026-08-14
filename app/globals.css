@@ -82,3 +82,193 @@
 @media(max-width:1100px){.settings-layout{grid-template-columns:1fr}.settings-preview{position:static;max-width:520px}.settings-preview-window{max-width:380px}}
 @media(max-width:900px){.settings-savebar{left:0}.restaurant-settings-page{padding-bottom:110px}}
 @media(max-width:620px){.restaurant-settings-page{padding-inline:16px}.settings-card{padding:19px}.settings-page-header .dash-actions{display:grid;grid-template-columns:1fr 1fr}.settings-layout{gap:20px}.settings-preview{max-width:none}.settings-savebar{padding:11px 16px}.settings-savebar>div{display:none}.settings-savebar .button{width:100%;min-width:0}.color-swatches{flex-wrap:wrap}}
+@keyframes menuva-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes menuva-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(3deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+}
+
+@keyframes menuva-drift {
+  0%,
+  100% {
+    transform: rotate(-7deg) scale(1);
+  }
+
+  50% {
+    transform: rotate(-4deg) scale(1.035);
+  }
+}
+
+/* Startseiten-Animationen */
+.landing > .nav {
+  animation: menuva-rise 0.7s ease both;
+}
+
+.hero-copy > * {
+  animation: menuva-rise 0.8s ease both;
+}
+
+.hero-copy > .eyebrow {
+  animation-delay: 0.1s;
+}
+
+.hero-copy > h1 {
+  animation-delay: 0.2s;
+}
+
+.hero-copy > p {
+  animation-delay: 0.3s;
+}
+
+.hero-copy > .hero-actions {
+  animation-delay: 0.4s;
+}
+
+.hero-copy > .trust-row {
+  animation-delay: 0.5s;
+}
+
+.hero-visual {
+  animation: menuva-rise 0.9s 0.2s ease both;
+}
+
+.sun-shape {
+  animation: menuva-drift 7s ease-in-out infinite;
+}
+
+.phone {
+  animation: menuva-float 5s ease-in-out infinite;
+}
+
+.qr-float {
+  animation: menuva-float 4s ease-in-out infinite;
+}
+
+.update-float {
+  animation: menuva-float 4.5s 0.5s ease-in-out infinite;
+}
+
+/* Hover-Effekte */
+.button {
+  transition:
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.button:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+
+.step-grid article,
+.feature-list > div {
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.step-grid article:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px #17201b18;
+}
+
+.feature-list > div:hover {
+  transform: translateX(8px);
+}
+
+.step-icon {
+  transition: transform 0.3s ease;
+}
+
+.step-grid article:hover .step-icon {
+  transform: rotate(-8deg) scale(1.1);
+}
+
+/* Bewegter Ticker */
+.ticker div {
+  display: inline-block;
+  animation: ticker-slide 22s linear infinite;
+}
+
+@keyframes ticker-slide {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-25%);
+  }
+}
+
+/* Öffentliche Menüseite */
+.menu-hero {
+  animation: menuva-rise 0.7s ease both;
+}
+
+.menu-hero h1 {
+  animation: menuva-rise 0.8s 0.15s ease both;
+}
+
+.hero-orb {
+  animation: menuva-drift 8s ease-in-out infinite;
+}
+
+.public-category {
+  animation: menuva-rise 0.7s ease both;
+}
+
+.public-category:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.public-category:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+/* Dashboard */
+.dashboard .sidebar {
+  animation: menuva-rise 0.6s ease both;
+}
+
+.dashboard .dash-main {
+  animation: menuva-rise 0.7s 0.1s ease both;
+}
+
+.category-block {
+  animation: menuva-rise 0.6s ease both;
+}
+
+.category-block:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.category-block:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+/* Barrierefreiheit */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
