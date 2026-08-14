@@ -25,3 +25,60 @@
 .color-field>div{display:grid;grid-template-columns:52px 1fr;gap:10px}
 .color-field input[type=color]{height:45px;padding:4px;cursor:pointer}
 @media(max-width:900px){.sidebar nav a,.sidebar nav button{font-size:0}}
+
+/* Full restaurant settings page */
+.hidden-section{display:none!important}
+.sidebar nav button.active{background:#ffffff14;color:white}
+.restaurant-settings-page{padding-bottom:120px}
+.settings-page-header{margin-bottom:32px}
+.settings-page-header>div:first-child>p{margin:7px 0 0;color:var(--muted);font-size:13px}
+.settings-form{display:block}
+.settings-layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:28px;align-items:start}
+.settings-stack{display:grid;gap:20px}
+.settings-card{background:white;border:1px solid #e2dfd7;border-radius:17px;padding:25px;box-shadow:0 10px 30px #17201b08}
+.settings-card-head{display:flex;gap:14px;align-items:flex-start;padding-bottom:21px;margin-bottom:22px;border-bottom:1px solid #eeeae1}
+.settings-card-head>span{width:34px;height:34px;border-radius:10px;background:#edf2e8;color:#3d6b50;display:grid;place-items:center;font:800 10px "Manrope";flex:0 0 auto}
+.settings-card-head h2{font:700 18px "Manrope";margin:0}
+.settings-card-head p{font-size:11px;color:var(--muted);margin:4px 0 0}
+.settings-card label{display:grid;gap:8px;font-size:12px;font-weight:700}
+.settings-card>label{margin-top:16px}
+.settings-card input,.settings-card textarea,.settings-card select{width:100%;border:1px solid var(--line);background:#fffefa;border-radius:10px;padding:13px 14px;outline:0;color:var(--ink)}
+.settings-card input:focus,.settings-card textarea:focus,.settings-card select:focus{border-color:var(--orange);box-shadow:0 0 0 3px #ff603817}
+.settings-card textarea{resize:vertical;line-height:1.55}
+.slug-input{display:grid;grid-template-columns:auto 1fr;align-items:center;border:1px solid var(--line);border-radius:10px;background:#fffefa;overflow:hidden}
+.slug-input:focus-within{border-color:var(--orange);box-shadow:0 0 0 3px #ff603817}
+.slug-input>span{padding:0 0 0 14px;color:#92968f;font-weight:500}
+.slug-input input{border:0!important;box-shadow:none!important;padding-left:5px}
+.color-swatches{display:flex;gap:9px;margin-top:13px}
+.color-swatches button{width:31px;height:31px;border-radius:50%;border:4px solid white;box-shadow:0 0 0 1px #d8d7cf;cursor:pointer}
+.color-swatches button.selected{box-shadow:0 0 0 2px var(--ink)}
+.settings-preview{position:sticky;top:28px}
+.settings-preview-label{display:flex;justify-content:space-between;align-items:center;margin:2px 2px 12px}
+.settings-preview-label span{font-size:9px;font-weight:800;letter-spacing:.16em;color:#707770}
+.settings-preview-label small{font-size:9px;color:#9a9e99}
+.settings-preview-window{overflow:hidden;background:#faf7ee;border:1px solid #dedbd2;border-radius:18px;box-shadow:0 22px 55px #17201b16}
+.preview-browser{height:32px;background:white;border-bottom:1px solid #e8e4dc;display:flex;align-items:center;gap:5px;padding:0 12px}
+.preview-browser i{width:6px;height:6px;border-radius:50%;background:#d7d5cf}
+.preview-browser span{margin-left:auto;font:700 8px "Manrope";color:#9b9d98}
+.preview-hero{position:relative;min-height:230px;padding:38px 27px;background:#183f34;color:white;overflow:hidden}
+.preview-hero small{position:relative;z-index:1;font-size:7px;letter-spacing:.15em;color:#b7c8c0;text-transform:uppercase}
+.preview-hero h3{position:relative;z-index:1;font:800 31px/1 "Manrope";letter-spacing:-1.8px;margin:11px 0}
+.preview-hero p{position:relative;z-index:1;font:400 11px/1.55 Georgia;color:#c7d5cf;margin:0;max-width:220px}
+.preview-hero>div{position:absolute;right:-42px;bottom:-70px;width:180px;height:180px;border-radius:50%;background:var(--preview-accent);display:grid;place-items:center;font:800 94px "Manrope";color:#ffffff1d;transform:rotate(-12deg)}
+.preview-tabs{display:flex;gap:15px;padding:13px 18px;border-bottom:1px solid #dedbd2;font-size:8px;color:#858a84}
+.preview-tabs b{color:var(--ink);border-bottom:2px solid var(--preview-accent);padding-bottom:10px;margin-bottom:-13px}
+.preview-dishes{padding:7px 18px 14px}
+.preview-dishes article{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid #e3ded3;font-size:9px}
+.preview-dishes article:last-child{border:0}
+.preview-dishes b,.preview-dishes small{display:block}
+.preview-dishes small{color:#898d87;margin-top:4px;font-size:7px}
+.preview-dishes strong{font-size:8px;white-space:nowrap}
+.preview-link{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 13px;background:#edf1e9;border:1px solid #dbe2d5;border-radius:10px;color:#557064;font-size:9px;overflow:hidden}
+.preview-link span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.settings-savebar{position:fixed;z-index:8;left:235px;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px clamp(25px,5vw,75px);background:#fffdf8ee;border-top:1px solid #dedbd2;backdrop-filter:blur(14px);box-shadow:0 -8px 30px #17201b0b}
+.settings-savebar p{display:flex;align-items:center;gap:7px;margin:0;color:#757b75;font-size:11px}
+.settings-savebar .form-message{color:#75511c}
+.settings-savebar .button{min-width:205px}
+@media(max-width:1100px){.settings-layout{grid-template-columns:1fr}.settings-preview{position:static;max-width:520px}.settings-preview-window{max-width:380px}}
+@media(max-width:900px){.settings-savebar{left:0}.restaurant-settings-page{padding-bottom:110px}}
+@media(max-width:620px){.restaurant-settings-page{padding-inline:16px}.settings-card{padding:19px}.settings-page-header .dash-actions{display:grid;grid-template-columns:1fr 1fr}.settings-layout{gap:20px}.settings-preview{max-width:none}.settings-savebar{padding:11px 16px}.settings-savebar>div{display:none}.settings-savebar .button{width:100%;min-width:0}.color-swatches{flex-wrap:wrap}}

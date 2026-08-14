@@ -112,7 +112,7 @@ function Dashboard() {
   const [loading, setLoading] = useState(true); const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [categories, setCategories] = useState<Category[]>([]); const [items, setItems] = useState<MenuItem[]>([]);
   const [itemModal, setItemModal] = useState(false); const [categoryModal, setCategoryModal] = useState(false);
-  const [settingsModal, setSettingsModal] = useState(false);
+  const [dashboardSection, setDashboardSection] = useState<"menu" | "restaurant">("menu");
   const [editing, setEditing] = useState<MenuItem | null>(null); const [notice, setNotice] = useState("");
   const load = useCallback(async () => {
     if (!supabase) { setLoading(false); return; }
@@ -143,7 +143,30 @@ function Dashboard() {
   async function remove(item: MenuItem) { if (!confirm(`„${item.name}“ wirklich löschen?`)) return; await supabase!.from("menu_items").delete().eq("id",item.id); setItems(items.filter(i=>i.id!==item.id)); flash("Eintrag gelöscht"); }
   async function signOut(){ await supabase!.auth.signOut(); window.location.hash="/"; }
   const menuUrl = `${window.location.origin}${window.location.pathname}#/m/${restaurant.slug}`;
-  return <main className="dashboard"><aside className="sidebar"><Logo inverse/><button className="restaurant-chip" onClick={()=>setSettingsModal(true)}><span>{restaurant.name.slice(0,1)}</span><div><b>{restaurant.name}</b><small>{restaurant.published ? "Online" : "Entwurf"}</small></div><ChevronDown size={15}/></button><nav><a className="active"><LayoutDashboard size={18}/> Menü</a><a href={`#/m/${restaurant.slug}`}><Eye size={18}/> Vorschau</a><button onClick={()=>setSettingsModal(true)}><Settings size={18}/> Restaurant</button></nav><button className="logout" onClick={signOut}><LogOut size={17}/> Abmelden</button></aside><section className="dash-main"><header className="dash-header"><div><span className="dash-overline">MENÜVERWALTUNG</span><h1>Was gibt&apos;s heute?</h1></div><div className="dash-actions"><button className={`status-button ${restaurant.published?"live":""}`} onClick={togglePublished}><span/>{restaurant.published?"Veröffentlicht":"Entwurf"}</button><a className="button button-dark" href={`#/m/${restaurant.slug}`}><Eye size={17}/> Menü ansehen</a></div></header><div className="share-card"><div className="share-icon"><Globe2/></div><div><b>Deine öffentliche Menükarte</b><span>{menuUrl}</span></div><button onClick={()=>{navigator.clipboard.writeText(menuUrl);flash("Link kopiert")}}><Copy size={17}/> Link kopieren</button></div><div className="dash-toolbar"><div><h2>Menüeinträge <span>{items.length}</span></h2><p>Organisiere dein Angebot nach Kategorien.</p></div><div><button className="button button-outline" onClick={()=>setCategoryModal(true)}><Plus size={16}/> Kategorie</button><button className="button button-primary" onClick={()=>{setEditing(null);setItemModal(true)}}><Plus size={17}/> Eintrag hinzufügen</button></div></div><div className="menu-board">{categories.length===0?<EmptyState onCategory={()=>setCategoryModal(true)}/>:categories.map(cat=><section className="category-block" key={cat.id}><div className="category-title"><h3>{cat.name}</h3><span>{items.filter(i=>i.category_id===cat.id).length} Einträge</span></div><div className="item-table">{items.filter(i=>i.category_id===cat.id).map(item=><article className={!item.available?"unavailable":""} key={item.id}><div className="item-thumb">{item.name.slice(0,1)}</div><div className="item-info"><b>{item.name}</b><span>{item.description || "Keine Beschreibung"}</span><div>{item.vegan&&<small>Vegan</small>}{item.vegetarian&&!item.vegan&&<small>Vegetarisch</small>}{item.spicy&&<small>Scharf</small>}</div></div><strong>{money(item.price,restaurant.currency)}</strong><label className="switch"><input type="checkbox" checked={item.available} onChange={()=>toggleAvailable(item)}/><span/></label><button className="icon-button" onClick={()=>{setEditing(item);setItemModal(true)}} aria-label="Bearbeiten"><Pencil size={16}/></button><button className="icon-button danger" onClick={()=>remove(item)} aria-label="Löschen"><Trash2 size={16}/></button></article>)}{items.filter(i=>i.category_id===cat.id).length===0&&<div className="empty-row">Noch keine Einträge in dieser Kategorie.</div>}</div></section>)}</div></section>{notice&&<div className="toast"><Check size={17}/>{notice}</div>}{settingsModal&&<RestaurantModal restaurant={restaurant} onClose={()=>setSettingsModal(false)} onSaved={updated=>{setRestaurant(updated);setSettingsModal(false);flash("Restaurant aktualisiert")}}/>}{categoryModal&&<CategoryModal restaurant={restaurant} count={categories.length} onClose={()=>setCategoryModal(false)} onSaved={()=>{setCategoryModal(false);load();flash("Kategorie erstellt")}}/>}{itemModal&&<ItemModal restaurant={restaurant} categories={categories} item={editing} count={items.length} onClose={()=>setItemModal(false)} onSaved={()=>{setItemModal(false);load();flash(editing?"Eintrag aktualisiert":"Eintrag erstellt")}}/>}</main>;
+  return <main className="dashboard">
+    <aside className="sidebar">
+      <Logo inverse/>
+      <button className="restaurant-chip" onClick={()=>setDashboardSection("restaurant")}><span>{restaurant.name.slice(0,1)}</span><div><b>{restaurant.name}</b><small>{restaurant.published ? "Online" : "Entwurf"}</small></div><ChevronDown size={15}/></button>
+      <nav>
+        <button className={dashboardSection==="menu"?"active":""} onClick={()=>setDashboardSection("menu")}><LayoutDashboard size={18}/> Menü</button>
+        <a href={`#/m/${restaurant.slug}`}><Eye size={18}/> Vorschau</a>
+        <button className={dashboardSection==="restaurant"?"active":""} onClick={()=>setDashboardSection("restaurant")}><Settings size={18}/> Restaurant</button>
+      </nav>
+      <button className="logout" onClick={signOut}><LogOut size={17}/> Abmelden</button>
+    </aside>
+    <section className={`dash-main ${dashboardSection==="menu"?"":"hidden-section"}`}>
+      <header className="dash-header"><div><span className="dash-overline">MENÜVERWALTUNG</span><h1>Was gibt&apos;s heute?</h1></div><div className="dash-actions"><button className={`status-button ${restaurant.published?"live":""}`} onClick={togglePublished}><span/>{restaurant.published?"Veröffentlicht":"Entwurf"}</button><a className="button button-dark" href={`#/m/${restaurant.slug}`}><Eye size={17}/> Menü ansehen</a></div></header>
+      <div className="share-card"><div className="share-icon"><Globe2/></div><div><b>Deine öffentliche Menükarte</b><span>{menuUrl}</span></div><button onClick={()=>{navigator.clipboard.writeText(menuUrl);flash("Link kopiert")}}><Copy size={17}/> Link kopieren</button></div>
+      <div className="dash-toolbar"><div><h2>Menüeinträge <span>{items.length}</span></h2><p>Organisiere dein Angebot nach Kategorien.</p></div><div><button className="button button-outline" onClick={()=>setCategoryModal(true)}><Plus size={16}/> Kategorie</button><button className="button button-primary" onClick={()=>{setEditing(null);setItemModal(true)}}><Plus size={17}/> Eintrag hinzufügen</button></div></div>
+      <div className="menu-board">{categories.length===0?<EmptyState onCategory={()=>setCategoryModal(true)}/>:categories.map(cat=><section className="category-block" key={cat.id}><div className="category-title"><h3>{cat.name}</h3><span>{items.filter(i=>i.category_id===cat.id).length} Einträge</span></div><div className="item-table">{items.filter(i=>i.category_id===cat.id).map(item=><article className={!item.available?"unavailable":""} key={item.id}><div className="item-thumb">{item.name.slice(0,1)}</div><div className="item-info"><b>{item.name}</b><span>{item.description || "Keine Beschreibung"}</span><div>{item.vegan&&<small>Vegan</small>}{item.vegetarian&&!item.vegan&&<small>Vegetarisch</small>}{item.spicy&&<small>Scharf</small>}</div></div><strong>{money(item.price,restaurant.currency)}</strong><label className="switch"><input type="checkbox" checked={item.available} onChange={()=>toggleAvailable(item)}/><span/></label><button className="icon-button" onClick={()=>{setEditing(item);setItemModal(true)}} aria-label="Bearbeiten"><Pencil size={16}/></button><button className="icon-button danger" onClick={()=>remove(item)} aria-label="Löschen"><Trash2 size={16}/></button></article>)}{items.filter(i=>i.category_id===cat.id).length===0&&<div className="empty-row">Noch keine Einträge in dieser Kategorie.</div>}</div></section>)}</div>
+    </section>
+    <section className={`dash-main restaurant-settings-page ${dashboardSection==="restaurant"?"":"hidden-section"}`}>
+      <RestaurantSettingsPage restaurant={restaurant} menuUrl={menuUrl} onTogglePublished={togglePublished} onSaved={updated=>{setRestaurant(updated);flash("Restaurant aktualisiert")}}/>
+    </section>
+    {notice&&<div className="toast"><Check size={17}/>{notice}</div>}
+    {categoryModal&&<CategoryModal restaurant={restaurant} count={categories.length} onClose={()=>setCategoryModal(false)} onSaved={()=>{setCategoryModal(false);load();flash("Kategorie erstellt")}}/>}
+    {itemModal&&<ItemModal restaurant={restaurant} categories={categories} item={editing} count={items.length} onClose={()=>setItemModal(false)} onSaved={()=>{setItemModal(false);load();flash(editing?"Eintrag aktualisiert":"Eintrag erstellt")}}/>}
+  </main>;
 }
 
 function SetupNeeded(){return <div className="center-page setup-needed"><Logo/><h1>Supabase verbinden</h1><p>Kopiere <code>.env.example</code> zu <code>.env.local</code>, trage URL und Anon Key ein und führe <code>supabase/schema.sql</code> im SQL Editor aus.</p><a className="button button-dark" href="#/m/demo">Erst das Demo-Menü ansehen</a></div>}
@@ -155,7 +178,7 @@ function RestaurantSetup({onDone}:{onDone:()=>void}) {
   return <main className="onboarding"><div className="onboarding-panel"><Logo/><span className="section-kicker">SCHRITT 1 VON 1</span><h1>Erzähl uns von deinem Restaurant.</h1><p>Diese Angaben erscheinen später oben auf deiner digitalen Karte.</p><form onSubmit={submit}><label>Restaurantname<input required value={name} onChange={e=>setName(e.target.value)} placeholder="z. B. Casa Luma"/></label><label>Standort<input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Chur, Schweiz"/></label><label>Kurzbeschreibung<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Was macht eure Küche besonders?" rows={3}/></label><button className="button button-primary button-full" disabled={busy}>{busy&&<Loader2 size={17} className="spin"/>}Restaurant erstellen <ArrowRight size={17}/></button></form></div><div className="onboarding-art"><div className="big-plate">🍋<span>🌿</span></div><h2>Deine Karte.<br/><i>Dein Geschmack.</i></h2></div></main>;
 }
 
-function RestaurantModal({restaurant,onClose,onSaved}:{restaurant:Restaurant;onClose:()=>void;onSaved:(restaurant:Restaurant)=>void}) {
+function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{restaurant:Restaurant;menuUrl:string;onTogglePublished:()=>void;onSaved:(restaurant:Restaurant)=>void}) {
   const [name,setName]=useState(restaurant.name); const [description,setDescription]=useState(restaurant.description||"");
   const [location,setLocation]=useState(restaurant.location||""); const [currency,setCurrency]=useState(restaurant.currency);
   const [slug,setSlug]=useState(restaurant.slug); const [accentColor,setAccentColor]=useState(restaurant.accent_color);
@@ -171,13 +194,44 @@ function RestaurantModal({restaurant,onClose,onSaved}:{restaurant:Restaurant;onC
     if(updateError){setError(updateError.code==="23505"?"Dieser Menü-Link ist bereits vergeben.":updateError.message);return}
     onSaved(data as Restaurant);
   }
-  return <Modal title="Restaurant verwalten" onClose={onClose}><form onSubmit={submit}>
-    <div className="form-grid"><label>Restaurantname<input autoFocus required minLength={2} maxLength={80} value={name} onChange={e=>setName(e.target.value)}/></label><label>Standort<input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Chur, Schweiz"/></label></div>
-    <label>Beschreibung<textarea rows={3} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Was macht eure Küche besonders?"/></label>
-    <div className="form-grid"><label>Öffentlicher Menü-Link<input required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={slug} onChange={e=>setSlug(slugify(e.target.value))}/><small className="field-help">Änderungen machen den alten Link ungültig.</small></label><label>Währung<select value={currency} onChange={e=>setCurrency(e.target.value)}><option value="CHF">CHF – Schweizer Franken</option><option value="EUR">EUR – Euro</option><option value="USD">USD – US-Dollar</option><option value="GBP">GBP – Britisches Pfund</option></select></label></div>
-    <label className="color-field">Akzentfarbe<div><input type="color" value={accentColor} onChange={e=>setAccentColor(e.target.value)}/><input value={accentColor} pattern="#[0-9a-fA-F]{6}" onChange={e=>setAccentColor(e.target.value)}/></div></label>
-    {error&&<p className="form-message">{error}</p>}<button className="button button-primary button-full" disabled={busy}>{busy&&<Loader2 size={17} className="spin"/>}Änderungen speichern</button>
-  </form></Modal>
+  const previewUrl=menuUrl.replace(restaurant.slug,slug||restaurant.slug);
+  return <div className="settings-page">
+    <header className="dash-header settings-page-header">
+      <div><span className="dash-overline">RESTAURANTVERWALTUNG</span><h1>Dein Auftritt.</h1><p>Verwalte alle Angaben, die deine Gäste auf der digitalen Karte sehen.</p></div>
+      <div className="dash-actions"><button className={`status-button ${restaurant.published?"live":""}`} onClick={onTogglePublished} type="button"><span/>{restaurant.published?"Veröffentlicht":"Entwurf"}</button><a className="button button-dark" href={`#/m/${restaurant.slug}`}><Eye size={17}/> Menü ansehen</a></div>
+    </header>
+    <form onSubmit={submit} className="settings-form">
+      <div className="settings-layout">
+        <div className="settings-stack">
+          <section className="settings-card">
+            <div className="settings-card-head"><span>01</span><div><h2>Stammdaten</h2><p>So wird dein Restaurant auf der Menükarte vorgestellt.</p></div></div>
+            <div className="form-grid"><label>Restaurantname<input autoFocus required minLength={2} maxLength={80} value={name} onChange={e=>setName(e.target.value)}/></label><label>Standort<input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Chur, Schweiz"/></label></div>
+            <label>Beschreibung<textarea rows={5} value={description} onChange={e=>setDescription(e.target.value)} placeholder="Was macht eure Küche besonders?"/></label>
+          </section>
+          <section className="settings-card">
+            <div className="settings-card-head"><span>02</span><div><h2>Öffentliche Menükarte</h2><p>Lege Adresse und Währung für deine Gäste fest.</p></div></div>
+            <div className="form-grid"><label>Öffentlicher Menü-Link<div className="slug-input"><span>/m/</span><input required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" value={slug} onChange={e=>setSlug(slugify(e.target.value))}/></div><small className="field-help">Änderungen machen den bisherigen Link ungültig.</small></label><label>Währung<select value={currency} onChange={e=>setCurrency(e.target.value)}><option value="CHF">CHF – Schweizer Franken</option><option value="EUR">EUR – Euro</option><option value="USD">USD – US-Dollar</option><option value="GBP">GBP – Britisches Pfund</option></select></label></div>
+          </section>
+          <section className="settings-card">
+            <div className="settings-card-head"><span>03</span><div><h2>Erscheinungsbild</h2><p>Deine Akzentfarbe prägt Titel, Markierungen und Details.</p></div></div>
+            <label className="color-field">Akzentfarbe<div><input type="color" value={accentColor} onChange={e=>setAccentColor(e.target.value)}/><input value={accentColor} pattern="#[0-9a-fA-F]{6}" onChange={e=>setAccentColor(e.target.value)}/></div></label>
+            <div className="color-swatches">{["#ff5c35","#147d64","#2764d8","#8d45b5","#c18b24"].map(color=><button key={color} type="button" className={accentColor.toLowerCase()===color?"selected":""} style={{background:color}} onClick={()=>setAccentColor(color)} aria-label={`Farbe ${color}`}/>)}</div>
+          </section>
+        </div>
+        <aside className="settings-preview">
+          <div className="settings-preview-label"><span>LIVE-VORSCHAU</span><small>Wird beim Tippen aktualisiert</small></div>
+          <div className="settings-preview-window" style={{"--preview-accent":accentColor} as React.CSSProperties}>
+            <div className="preview-browser"><i/><i/><i/><span>menuva</span></div>
+            <div className="preview-hero"><small>{location||"DEIN STANDORT"}</small><h3>{name||"Dein Restaurant"}</h3><p>{description||"Deine Restaurantbeschreibung erscheint hier."}</p><div>{(name||"R").slice(0,1)}</div></div>
+            <div className="preview-tabs"><b>Alles</b><span>Speisen</span><span>Getränke</span></div>
+            <div className="preview-dishes"><article><div><b>Dein erster Menüeintrag</b><small>Beschreibung und Zutaten</small></div><strong>{money(24,currency)}</strong></article><article><div><b>Hausgemachte Spezialität</b><small>Frisch für deine Gäste</small></div><strong>{money(16,currency)}</strong></article></div>
+          </div>
+          <div className="preview-link"><Globe2 size={16}/><span>{previewUrl}</span></div>
+        </aside>
+      </div>
+      <div className="settings-savebar"><div>{error?<p className="form-message">{error}</p>:<p><CircleCheck size={17}/> Änderungen werden erst nach dem Speichern öffentlich.</p>}</div><button className="button button-primary" disabled={busy}>{busy&&<Loader2 size={17} className="spin"/>}Änderungen speichern</button></div>
+    </form>
+  </div>
 }
 
 function CategoryModal({restaurant,count,onClose,onSaved}:{restaurant:Restaurant;count:number;onClose:()=>void;onSaved:()=>void}){const[name,setName]=useState("");async function submit(e:FormEvent){e.preventDefault();await supabase!.from("categories").insert({restaurant_id:restaurant.id,name,sort_order:count});onSaved()}return <Modal title="Neue Kategorie" onClose={onClose}><form onSubmit={submit}><label>Name<input autoFocus required value={name} onChange={e=>setName(e.target.value)} placeholder="z. B. Desserts"/></label><button className="button button-primary button-full">Kategorie erstellen</button></form></Modal>}
