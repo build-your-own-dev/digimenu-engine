@@ -4,8 +4,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight, Check, ChevronDown, CircleCheck, Copy, Download, ExternalLink, Eye,
-  Globe2, ImagePlus, LayoutDashboard, Leaf, Loader2, LogOut, Menu, Palette, Pencil, Plus,
-  Minus, QrCode, RefreshCw, Search, Settings, ShieldCheck, ShoppingBag, Smartphone, Sparkles, Trash2, UploadCloud, UtensilsCrossed, X,
+  Globe2, ImagePlus, LayoutDashboard, Leaf, Link2, Loader2, LogOut, Menu, Palette, Pencil, Plus,
+  Minus, QrCode, RefreshCw, Search, Settings, ShieldCheck, ShoppingBag, Smartphone, Sparkles, Trash2, UploadCloud, UserPlus, Users, UtensilsCrossed, X,
 } from "lucide-react";
 import QRCode from "qrcode";
 import { supabase, supabaseConfigured } from "../lib/supabase";
@@ -43,7 +43,7 @@ const demoItems: MenuItem[] = [
 
 const imageTypes=["image/jpeg","image/png","image/webp"];
 function imageError(file:File){if(!imageTypes.includes(file.type))return"Bitte JPG, PNG oder WebP verwenden.";if(file.size>5*1024*1024)return"Das Bild darf maximal 5 MB gross sein.";return""}
-async function uploadImage(file:File,ownerId:string,folder:string){const validation=imageError(file);if(validation)throw new Error(validation);const extension=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${ownerId}/${folder}/${crypto.randomUUID()}.${extension}`;const{error}=await supabase!.storage.from("menu-assets").upload(path,file,{cacheControl:"3600",upsert:false});if(error)throw error;return supabase!.storage.from("menu-assets").getPublicUrl(path).data.publicUrl}
+async function uploadImage(file:File,folder:string){const validation=imageError(file);if(validation)throw new Error(validation);const{data:{user}}=await supabase!.auth.getUser();if(!user)throw new Error("Bitte erneut anmelden.");const extension=file.name.split(".").pop()?.toLowerCase()||"jpg";const path=`${user.id}/${folder}/${crypto.randomUUID()}.${extension}`;const{error}=await supabase!.storage.from("menu-assets").upload(path,file,{cacheControl:"3600",upsert:false});if(error)throw error;return supabase!.storage.from("menu-assets").getPublicUrl(path).data.publicUrl}
 function useImagePreview(file:File|null,fallback:string|null){const url=useMemo(()=>file?URL.createObjectURL(file):fallback||"",[file,fallback]);useEffect(()=>()=>{if(file)URL.revokeObjectURL(url)},[file,url]);return url}
 
 function money(value: number, currency: string) {
@@ -58,6 +58,7 @@ function contrastFor(color:string){const clean=color.replace("#","");const r=par
 function route() {
   const hash = window.location.hash.replace(/^#/, "") || "/";
   if (hash.startsWith("/m/")) return { page: "menu", slug: hash.slice(3) };
+  if (hash.startsWith("/invite/")) return { page: "invite", slug: hash.slice(8) };
   if (hash === "/dashboard") return { page: "dashboard", slug: "" };
   if (hash === "/login") return { page: "login", slug: "" };
   if (hash === "/how") return { page: "how", slug: "" };
@@ -73,14 +74,15 @@ export default function Home() {
     window.addEventListener("hashchange", sync); return () => window.removeEventListener("hashchange", sync);
   }, []);
   useEffect(() => {
-    if (!supabase) return;
-    void supabase.auth.getSession().then(({ data }) => setLoggedIn(Boolean(data.session)));
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => setLoggedIn(Boolean(session)));
+    const client=supabase;if (!client) return;
+    void client.auth.getSession().then(async({ data }) => {setLoggedIn(Boolean(data.session));const token=sessionStorage.getItem("menuva-pending-invite");if(data.session&&token){const{error}=await client.rpc("redeem_restaurant_invite",{invite_token:token});if(!error){sessionStorage.removeItem("menuva-pending-invite");window.location.hash="/dashboard"}}});
+    const { data: listener } = client.auth.onAuthStateChange((_event, session) => setLoggedIn(Boolean(session)));
     return () => listener.subscription.unsubscribe();
   }, []);
   if (current.page === "menu") return <PublicMenu slug={current.slug} />;
   if (current.page === "dashboard") return <Dashboard />;
   if (current.page === "login") return <Auth />;
+  if (current.page === "invite") return <InvitePage token={current.slug}/>;
   if (current.page === "how") return <HowItWorksPage loggedIn={loggedIn}/>;
   if (current.page === "features") return <FeaturesPage loggedIn={loggedIn}/>;
   return <Landing loggedIn={loggedIn} />;
@@ -156,30 +158,34 @@ function Auth() {
     setBusy(false);
     if (result.error) return setMessage(result.error.message);
     if (signup && !result.data.session) setMessage("Bestätige deine E-Mail, danach kannst du dich anmelden.");
-    else window.location.hash = "/dashboard";
+    else {const inviteToken=sessionStorage.getItem("menuva-pending-invite");if(inviteToken){const{error:inviteError}=await supabase.rpc("redeem_restaurant_invite",{invite_token:inviteToken});sessionStorage.removeItem("menuva-pending-invite");if(inviteError){setMessage(inviteError.message);return}}window.location.hash = "/dashboard"}
   }
   return <main className="auth-page"><a className="auth-back" href="#/">← Zurück</a><div className="auth-card"><Logo/><div className="auth-heading"><span className="section-kicker">WILLKOMMEN BEI MENUVA</span><h1>{signup ? "Dein Menü beginnt hier." : "Schön, dich wiederzusehen."}</h1><p>{signup ? "Erstelle kostenlos dein Restaurant und veröffentliche deine Karte." : "Melde dich an, um deine Speisekarte zu verwalten."}</p></div>{!supabaseConfigured && <div className="config-note">Demo-Modus: Hinterlege zuerst deine Supabase-Zugangsdaten.</div>}<form onSubmit={submit}><label>E-Mail<input type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="hallo@restaurant.ch"/></label><label>Passwort<input type="password" minLength={6} required value={password} onChange={e=>setPassword(e.target.value)} placeholder="Mindestens 6 Zeichen"/></label>{message && <p className="form-message">{message}</p>}<button className="button button-primary button-full" disabled={busy}>{busy ? <Loader2 className="spin" size={18}/> : null}{signup ? "Kostenlos registrieren" : "Anmelden"}</button></form><p className="auth-switch">{signup ? "Schon registriert?" : "Noch kein Konto?"} <button onClick={()=>{setSignup(!signup);setMessage("")}}>{signup ? "Anmelden" : "Jetzt starten"}</button></p></div><div className="auth-side"><span>“</span><p>Eine gute Speisekarte macht Lust, bevor der erste Teller auf dem Tisch steht.</p><small>MENUVA MANIFEST</small></div></main>;
 }
 
+function InvitePage({token}:{token:string}){
+  const[status,setStatus]=useState<"checking"|"login"|"accepted"|"error">("checking");const[message,setMessage]=useState("");
+  useEffect(()=>{sessionStorage.setItem("menuva-pending-invite",token);const client=supabase;if(!client){const timer=window.setTimeout(()=>{setMessage("Supabase ist nicht konfiguriert.");setStatus("error")},0);return()=>window.clearTimeout(timer)}void client.auth.getSession().then(async({data})=>{if(!data.session){setStatus("login");return}const{error}=await client.rpc("redeem_restaurant_invite",{invite_token:token});sessionStorage.removeItem("menuva-pending-invite");if(error){setMessage(error.message);setStatus("error");return}setStatus("accepted")})},[token]);
+  return <main className="invite-page"><div className="invite-card"><Logo/><div className="invite-icon">{status==="accepted"?<CircleCheck/>:<Users/>}</div>{status==="checking"&&<><h1>Einladung wird geprüft …</h1><Loader2 className="spin"/></>}{status==="login"&&<><span className="section-kicker">RESTAURANT-EINLADUNG</span><h1>Gemeinsam am Menü arbeiten.</h1><p>Melde dich an oder erstelle einen Account. Danach wird die Einladung einmalig angenommen.</p><a className="button button-primary button-full" href="#/login">Anmelden und Einladung annehmen <ArrowRight size={17}/></a></>}{status==="accepted"&&<><span className="section-kicker">EINLADUNG ANGENOMMEN</span><h1>Du bist jetzt dabei.</h1><p>Das Restaurant wurde deinem Dashboard hinzugefügt. Dieser Einladungslink ist ab jetzt ungültig.</p><a className="button button-dark button-full" href="#/dashboard">Restaurant öffnen <ArrowRight size={17}/></a></>}{status==="error"&&<><span className="section-kicker">LINK NICHT GÜLTIG</span><h1>Einladung nicht verfügbar.</h1><p>{message||"Dieser Link wurde bereits verwendet oder existiert nicht."}</p><a className="button button-outline button-full" href="#/dashboard">Zum Dashboard</a></>}</div></main>
+}
+
 function Dashboard() {
-  const [loading, setLoading] = useState(true); const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true); const [restaurant, setRestaurant] = useState<Restaurant | null>(null);const[restaurants,setRestaurants]=useState<Restaurant[]>([]);const[userId,setUserId]=useState("");
   const [categories, setCategories] = useState<Category[]>([]); const [items, setItems] = useState<MenuItem[]>([]);
-  const [itemModal, setItemModal] = useState(false); const [categoryModal, setCategoryModal] = useState(false); const [qrModal, setQrModal] = useState(false);
+  const [itemModal, setItemModal] = useState(false); const [categoryModal, setCategoryModal] = useState(false); const [qrModal, setQrModal] = useState(false);const[createModal,setCreateModal]=useState(false);const[switcherOpen,setSwitcherOpen]=useState(false);
   const [dashboardSection, setDashboardSection] = useState<"menu" | "restaurant">("menu");
   const [editing, setEditing] = useState<MenuItem | null>(null); const [notice, setNotice] = useState("");
+  const loadMenu=useCallback(async(rest:Restaurant)=>{const[{data:cats},{data:menu}]=await Promise.all([supabase!.from("categories").select("*").eq("restaurant_id",rest.id).order("sort_order"),supabase!.from("menu_items").select("*").eq("restaurant_id",rest.id).order("sort_order")]);setCategories(cats||[]);setItems(menu||[])},[]);
   const load = useCallback(async () => {
     if (!supabase) { setLoading(false); return; }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { window.location.hash = "/login"; return; }
-    const { data: rest } = await supabase.from("restaurants").select("*").eq("owner_id", user.id).maybeSingle();
-    setRestaurant(rest);
-    if (rest) {
-      const [{ data: cats }, { data: menu }] = await Promise.all([
-        supabase.from("categories").select("*").eq("restaurant_id", rest.id).order("sort_order"),
-        supabase.from("menu_items").select("*").eq("restaurant_id", rest.id).order("sort_order"),
-      ]); setCategories(cats || []); setItems(menu || []);
-    } setLoading(false);
-  }, []);
+    setUserId(user.id);
+    const[{data:owned},{data:memberships}]=await Promise.all([supabase.from("restaurants").select("*").eq("owner_id",user.id).order("created_at"),supabase.from("restaurant_collaborators").select("restaurant_id").eq("user_id",user.id)]);
+    const collaboratorIds=(memberships||[]).map(entry=>entry.restaurant_id);const{data:collaborating}=collaboratorIds.length?await supabase.from("restaurants").select("*").in("id",collaboratorIds):{data:[] as Restaurant[]};
+    const available=[...(owned||[]),...(collaborating||[])].filter((entry,index,list)=>list.findIndex(item=>item.id===entry.id)===index) as Restaurant[];setRestaurants(available);
+    const rememberedId=localStorage.getItem("menuva-active-restaurant");const selected=available.find(entry=>entry.id===rememberedId)||available[0]||null;setRestaurant(selected);if(selected){localStorage.setItem("menuva-active-restaurant",selected.id);await loadMenu(selected)}else{setCategories([]);setItems([])}setLoading(false);
+  }, [loadMenu]);
   useEffect(()=>{
     const initialLoad = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(initialLoad);
@@ -195,11 +201,13 @@ function Dashboard() {
   async function toggleAvailable(item: MenuItem) { await supabase!.from("menu_items").update({ available: !item.available }).eq("id",item.id); setItems(items.map(i=>i.id===item.id?{...i,available:!i.available}:i)); }
   async function remove(item: MenuItem) { if (!confirm(`„${item.name}“ wirklich löschen?`)) return; await supabase!.from("menu_items").delete().eq("id",item.id); setItems(items.filter(i=>i.id!==item.id)); flash("Eintrag gelöscht"); }
   async function signOut(){ await supabase!.auth.signOut(); window.location.hash="/"; }
+  async function selectRestaurant(selected:Restaurant){setSwitcherOpen(false);setRestaurant(selected);setCategories([]);setItems([]);localStorage.setItem("menuva-active-restaurant",selected.id);await loadMenu(selected);setDashboardSection("menu")}
   const menuUrl = `${window.location.origin}${window.location.pathname}#/m/${restaurant.slug}`;
+  const ownedCount=restaurants.filter(entry=>entry.owner_id===userId).length;const isOwner=restaurant.owner_id===userId;
   return <main className="dashboard">
     <aside className="sidebar">
       <Logo inverse/>
-      <button className="restaurant-chip" onClick={()=>setDashboardSection("restaurant")}><span>{restaurant.name.slice(0,1)}</span><div><b>{restaurant.name}</b><small>{restaurant.published ? "Online" : "Entwurf"}</small></div><ChevronDown size={15}/></button>
+      <div className="restaurant-switcher-wrap"><button className="restaurant-chip" onClick={()=>setSwitcherOpen(!switcherOpen)}><span>{restaurant.name.slice(0,1)}</span><div><b>{restaurant.name}</b><small>{isOwner?"Eigentümer":"Kollaborator"} · {restaurant.published?"Online":"Entwurf"}</small></div><ChevronDown className={switcherOpen?"open":""} size={15}/></button>{switcherOpen&&<div className="restaurant-switcher"><span>DEINE RESTAURANTS</span>{restaurants.map(entry=><button className={entry.id===restaurant.id?"active":""} key={entry.id} onClick={()=>void selectRestaurant(entry)}><i>{entry.name.slice(0,1)}</i><div><b>{entry.name}</b><small>{entry.owner_id===userId?"Eigentümer":"Kollaborator"}</small></div>{entry.id===restaurant.id&&<Check/>}</button>)}{ownedCount<2&&<button className="add-restaurant" onClick={()=>{setSwitcherOpen(false);setCreateModal(true)}}><Plus/><b>Restaurant hinzufügen</b><small>{ownedCount}/2 eigene Restaurants</small></button>}</div>}</div>
       <nav>
         <button className={dashboardSection==="menu"?"active":""} onClick={()=>setDashboardSection("menu")}><LayoutDashboard size={18}/> Menü</button>
         <a href={`#/m/${restaurant.slug}`}><Eye size={18}/> Vorschau</a>
@@ -214,10 +222,11 @@ function Dashboard() {
       <div className="menu-board">{categories.length===0?<EmptyState onCategory={()=>setCategoryModal(true)}/>:categories.map(cat=><section className="category-block" key={cat.id}><div className="category-title"><h3>{cat.name}</h3><span>{items.filter(i=>i.category_id===cat.id).length} Einträge</span></div><div className="item-table">{items.filter(i=>i.category_id===cat.id).map(item=><article className={!item.available?"unavailable":""} key={item.id}><div className={`item-thumb ${item.image_url?"has-image":""}`}>{item.image_url?<img src={item.image_url} alt=""/>:item.name.slice(0,1)}</div><div className="item-info"><b>{item.name}</b><span>{item.description || "Keine Beschreibung"}</span><div>{item.vegan&&<small>Vegan</small>}{item.vegetarian&&!item.vegan&&<small>Vegetarisch</small>}{item.spicy&&<small>Scharf</small>}</div></div><strong>{money(item.price,restaurant.currency)}</strong><label className="switch"><input type="checkbox" checked={item.available} onChange={()=>toggleAvailable(item)}/><span/></label><button className="icon-button" onClick={()=>{setEditing(item);setItemModal(true)}} aria-label="Bearbeiten"><Pencil size={16}/></button><button className="icon-button danger" onClick={()=>remove(item)} aria-label="Löschen"><Trash2 size={16}/></button></article>)}{items.filter(i=>i.category_id===cat.id).length===0&&<div className="empty-row">Noch keine Einträge in dieser Kategorie.</div>}</div></section>)}</div>
     </section>
     <section className={`dash-main restaurant-settings-page ${dashboardSection==="restaurant"?"":"hidden-section"}`}>
-      <RestaurantSettingsPage restaurant={restaurant} menuUrl={menuUrl} onTogglePublished={togglePublished} onSaved={updated=>{setRestaurant(updated);flash("Restaurant aktualisiert")}}/>
+      <RestaurantSettingsPage key={restaurant.id} restaurant={restaurant} menuUrl={menuUrl} isOwner={isOwner} onTogglePublished={togglePublished} onSaved={updated=>{setRestaurant(updated);setRestaurants(current=>current.map(entry=>entry.id===updated.id?updated:entry));flash("Restaurant aktualisiert")}}/>
     </section>
     {notice&&<div className="toast"><Check size={17}/>{notice}</div>}
     {qrModal&&<QrCodeModal menuUrl={menuUrl} restaurantName={restaurant.name} onClose={()=>setQrModal(false)}/>}
+    {createModal&&<RestaurantCreateModal onClose={()=>setCreateModal(false)} onCreated={id=>{localStorage.setItem("menuva-active-restaurant",id);setCreateModal(false);void load();flash("Restaurant erstellt")}}/>}
     {categoryModal&&<CategoryModal restaurant={restaurant} count={categories.length} onClose={()=>setCategoryModal(false)} onSaved={()=>{setCategoryModal(false);load();flash("Kategorie erstellt")}}/>}
     {itemModal&&<ItemModal restaurant={restaurant} categories={categories} item={editing} count={items.length} onClose={()=>setItemModal(false)} onSaved={()=>{setItemModal(false);load();flash(editing?"Eintrag aktualisiert":"Eintrag erstellt")}}/>}
   </main>;
@@ -241,7 +250,13 @@ function RestaurantSetup({onDone}:{onDone:()=>void}) {
   return <main className="onboarding"><div className="onboarding-panel"><Logo/><span className="section-kicker">SCHRITT 1 VON 1</span><h1>Erzähl uns von deinem Restaurant.</h1><p>Diese Angaben erscheinen später oben auf deiner digitalen Karte.</p><form onSubmit={submit}><label>Restaurantname<input required value={name} onChange={e=>setName(e.target.value)} placeholder="z. B. Casa Luma"/></label><label>Standort<input value={location} onChange={e=>setLocation(e.target.value)} placeholder="Chur, Schweiz"/></label><label>Kurzbeschreibung<textarea value={description} onChange={e=>setDescription(e.target.value)} placeholder="Was macht eure Küche besonders?" rows={3}/></label><button className="button button-primary button-full" disabled={busy}>{busy&&<Loader2 size={17} className="spin"/>}Restaurant erstellen <ArrowRight size={17}/></button></form></div><div className="onboarding-art"><div className="big-plate">🍋<span>🌿</span></div><h2>Deine Karte.<br/><i>Dein Geschmack.</i></h2></div></main>;
 }
 
-function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{restaurant:Restaurant;menuUrl:string;onTogglePublished:()=>void;onSaved:(restaurant:Restaurant)=>void}) {
+function RestaurantCreateModal({onClose,onCreated}:{onClose:()=>void;onCreated:(id:string)=>void}){
+  const[name,setName]=useState("");const[location,setLocation]=useState("");const[description,setDescription]=useState("");const[busy,setBusy]=useState(false);const[error,setError]=useState("");
+  async function submit(event:FormEvent){event.preventDefault();setBusy(true);setError("");const{data:{user}}=await supabase!.auth.getUser();if(!user){setError("Bitte erneut anmelden.");setBusy(false);return}const slug=`${slugify(name)}-${Math.random().toString(36).slice(2,6)}`;const{data,error:createError}=await supabase!.from("restaurants").insert({owner_id:user.id,name:name.trim(),location:location.trim()||null,description:description.trim()||null,slug}).select().single();if(createError){setError(createError.message);setBusy(false);return}const categories=["Vorspeisen","Hauptgerichte","Getränke"].map((category,index)=>({restaurant_id:data.id,name:category,sort_order:index}));await supabase!.from("categories").insert(categories);setBusy(false);onCreated(data.id)}
+  return <Modal title="Weiteres Restaurant" onClose={onClose}><form onSubmit={submit}><p className="modal-intro">Du kannst maximal zwei eigene Restaurants mit deinem Account verwalten.</p><label>Restaurantname<input autoFocus required minLength={2} maxLength={80} value={name} onChange={event=>setName(event.target.value)} placeholder="z. B. Trattoria Sole"/></label><label>Standort<input value={location} onChange={event=>setLocation(event.target.value)} placeholder="Chur, Schweiz"/></label><label>Kurzbeschreibung<textarea rows={3} value={description} onChange={event=>setDescription(event.target.value)} placeholder="Was macht dieses Restaurant besonders?"/></label>{error&&<p className="form-message">{error}</p>}<button className="button button-primary button-full" disabled={busy}>{busy&&<Loader2 className="spin" size={17}/>}Restaurant erstellen</button></form></Modal>
+}
+
+function RestaurantSettingsPage({restaurant,menuUrl,isOwner,onTogglePublished,onSaved}:{restaurant:Restaurant;menuUrl:string;isOwner:boolean;onTogglePublished:()=>void;onSaved:(restaurant:Restaurant)=>void}) {
   const [name,setName]=useState(restaurant.name); const [description,setDescription]=useState(restaurant.description||"");
   const [location,setLocation]=useState(restaurant.location||""); const [currency,setCurrency]=useState(restaurant.currency);
   const [slug,setSlug]=useState(restaurant.slug); const [accentColor,setAccentColor]=useState(restaurant.accent_color);
@@ -251,7 +266,7 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
   async function submit(e:FormEvent) {
     e.preventDefault(); setBusy(true); setError("");
     try{
-      const[logoUrl,bannerUrl]=await Promise.all([logoFile?uploadImage(logoFile,restaurant.owner_id,"restaurant/logo"):restaurant.logo_url,bannerFile?uploadImage(bannerFile,restaurant.owner_id,"restaurant/banner"):restaurant.banner_url]);
+      const[logoUrl,bannerUrl]=await Promise.all([logoFile?uploadImage(logoFile,"restaurant/logo"):restaurant.logo_url,bannerFile?uploadImage(bannerFile,"restaurant/banner"):restaurant.banner_url]);
       const cleanSlug=slugify(slug);
       const {data,error:updateError}=await supabase!.from("restaurants").update({name:name.trim(),description:description.trim()||null,location:location.trim()||null,currency,slug:cleanSlug,accent_color:accentColor,logo_url:logoUrl,banner_url:bannerUrl}).eq("id",restaurant.id).select().single();
       if(updateError)throw updateError;
@@ -289,6 +304,7 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
               <label className="media-upload banner-upload"><span>Bannerbild</span><div style={bannerPreview?{backgroundImage:`linear-gradient(#17201b22,#17201b22),url(${bannerPreview})`}:undefined}>{!bannerPreview&&<ImagePlus/>}<b><UploadCloud size={16}/> Banner auswählen</b><small>Breites Querformat empfohlen · max. 5 MB</small></div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setBannerFile(e.target.files?.[0]||null)}/></label>
             </div>
           </section>
+          <TeamSettings restaurant={restaurant} isOwner={isOwner}/>
         </div>
         <aside className="settings-preview">
           <div className="settings-preview-label"><span>LIVE-VORSCHAU</span><small>Wird beim Tippen aktualisiert</small></div>
@@ -306,12 +322,23 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
   </div>
 }
 
+type CollaboratorInfo={collaboration_id:string;user_id:string;email:string;added_at:string};
+function TeamSettings({restaurant,isOwner}:{restaurant:Restaurant;isOwner:boolean}){
+  const[collaborators,setCollaborators]=useState<CollaboratorInfo[]>([]);const[inviteToken,setInviteToken]=useState("");const[busy,setBusy]=useState(false);const[message,setMessage]=useState("");
+  const loadTeam=useCallback(async()=>{if(!isOwner)return;const[{data:team,error:teamError},{data:invites}]=await Promise.all([supabase!.rpc("get_restaurant_collaborators",{target_restaurant:restaurant.id}),supabase!.from("restaurant_invites").select("token").eq("restaurant_id",restaurant.id).is("used_at",null).order("created_at",{ascending:false}).limit(1)]);if(teamError){setMessage(teamError.message);return}setCollaborators((team||[]) as CollaboratorInfo[]);setInviteToken(invites?.[0]?.token||"")},[isOwner,restaurant.id]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void loadTeam(),0);return()=>window.clearTimeout(timer)},[loadTeam]);
+  const inviteUrl=inviteToken?`${window.location.origin}${window.location.pathname}#/invite/${inviteToken}`:"";
+  async function generateInvite(){setBusy(true);setMessage("");await supabase!.from("restaurant_invites").delete().eq("restaurant_id",restaurant.id).is("used_at",null);const{data:{user}}=await supabase!.auth.getUser();const{data,error}=await supabase!.from("restaurant_invites").insert({restaurant_id:restaurant.id,created_by:user!.id}).select("token").single();setBusy(false);if(error){setMessage(error.message);return}setInviteToken(data.token);setMessage("Neuer Einladungslink erstellt.")}
+  async function removeCollaborator(id:string){if(!confirm("Kollaborator wirklich entfernen?"))return;const{error}=await supabase!.from("restaurant_collaborators").delete().eq("id",id);if(error){setMessage(error.message);return}setCollaborators(current=>current.filter(entry=>entry.collaboration_id!==id))}
+  return <section className="settings-card team-settings"><div className="settings-card-head"><span>05</span><div><h2>Team & Kollaboration</h2><p>Bearbeitet die Menükarte gemeinsam mit weiteren Accounts.</p></div></div>{!isOwner?<div className="collaborator-role-note"><Users/><div><b>Du bist Kollaborator</b><p>Du kannst Menü und Restaurantdaten bearbeiten. Einladungen verwaltet nur der Eigentümer.</p></div></div>:<><div className="invite-builder"><div><UserPlus/><div><b>Einmaliger Einladungslink</b><p>Nach der ersten erfolgreichen Anmeldung wird der Link automatisch ungültig.</p></div></div><button type="button" className="button button-dark" onClick={()=>void generateInvite()} disabled={busy}>{busy?<Loader2 className="spin" size={16}/>:<Link2 size={16}/>} {inviteToken?"Neuen Link erstellen":"Link erstellen"}</button></div>{inviteUrl&&<div className="invite-link"><span>{inviteUrl}</span><button type="button" onClick={()=>{void navigator.clipboard.writeText(inviteUrl);setMessage("Link kopiert.")}}><Copy size={16}/> Kopieren</button></div>}<div className="collaborator-list"><div className="collaborator-list-head"><b>Kollaboratoren</b><span>{collaborators.length}</span></div>{collaborators.length===0?<p className="team-empty">Noch keine Kollaboratoren hinzugefügt.</p>:collaborators.map(entry=><article key={entry.collaboration_id}><i>{entry.email.slice(0,1).toUpperCase()}</i><div><b>{entry.email}</b><small>Seit {new Intl.DateTimeFormat("de-CH").format(new Date(entry.added_at))}</small></div><button type="button" onClick={()=>void removeCollaborator(entry.collaboration_id)} aria-label={`${entry.email} entfernen`}><Trash2/></button></article>)}</div></>}{message&&<p className="team-message">{message}</p>}</section>
+}
+
 function CategoryModal({restaurant,count,onClose,onSaved}:{restaurant:Restaurant;count:number;onClose:()=>void;onSaved:()=>void}){const[name,setName]=useState("");async function submit(e:FormEvent){e.preventDefault();await supabase!.from("categories").insert({restaurant_id:restaurant.id,name,sort_order:count});onSaved()}return <Modal title="Neue Kategorie" onClose={onClose}><form onSubmit={submit}><label>Name<input autoFocus required value={name} onChange={e=>setName(e.target.value)} placeholder="z. B. Desserts"/></label><button className="button button-primary button-full">Kategorie erstellen</button></form></Modal>}
 function ItemModal({restaurant,categories,item,count,onClose,onSaved}:{restaurant:Restaurant;categories:Category[];item:MenuItem|null;count:number;onClose:()=>void;onSaved:()=>void}) {
   const[name,setName]=useState(item?.name||"");const[description,setDescription]=useState(item?.description||"");const[price,setPrice]=useState(String(item?.price||""));const[category,setCategory]=useState(item?.category_id||categories[0]?.id||"");
   const[vegetarian,setVegetarian]=useState(item?.vegetarian||false);const[vegan,setVegan]=useState(item?.vegan||false);const[spicy,setSpicy]=useState(item?.spicy||false);const[imageFile,setImageFile]=useState<File|null>(null);const[busy,setBusy]=useState(false);const[error,setError]=useState("");
   const imagePreview=useImagePreview(imageFile,item?.image_url||null);
-  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const imageUrl=imageFile?await uploadImage(imageFile,restaurant.owner_id,"items"):item?.image_url||null;const payload={restaurant_id:restaurant.id,category_id:category,name,description,price:Number(price),vegetarian:vegetarian||vegan,vegan,spicy,image_url:imageUrl,sort_order:item?.sort_order??count};const{error:saveError}=item?await supabase!.from("menu_items").update(payload).eq("id",item.id):await supabase!.from("menu_items").insert(payload);if(saveError)throw saveError;onSaved()}catch(saveError){setError(typeof saveError==="object"&&saveError&&"message" in saveError?String(saveError.message):"Bild oder Eintrag konnte nicht gespeichert werden.")}finally{setBusy(false)}}
+  async function submit(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const imageUrl=imageFile?await uploadImage(imageFile,"items"):item?.image_url||null;const payload={restaurant_id:restaurant.id,category_id:category,name,description,price:Number(price),vegetarian:vegetarian||vegan,vegan,spicy,image_url:imageUrl,sort_order:item?.sort_order??count};const{error:saveError}=item?await supabase!.from("menu_items").update(payload).eq("id",item.id):await supabase!.from("menu_items").insert(payload);if(saveError)throw saveError;onSaved()}catch(saveError){setError(typeof saveError==="object"&&saveError&&"message" in saveError?String(saveError.message):"Bild oder Eintrag konnte nicht gespeichert werden.")}finally{setBusy(false)}}
   return <Modal title={item?"Eintrag bearbeiten":"Neuer Menüeintrag"} onClose={onClose}><form onSubmit={submit}>
     <label className="dish-image-upload"><span>Bild des Gerichts</span><div className={imagePreview?"has-image":""} style={imagePreview?{backgroundImage:`linear-gradient(#17201b33,#17201b33),url(${imagePreview})`}:undefined}>{!imagePreview&&<ImagePlus/>}<b><UploadCloud size={17}/> {imagePreview?"Bild ersetzen":"Bild auswählen"}</b><small>JPG, PNG oder WebP · maximal 5 MB</small></div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setImageFile(e.target.files?.[0]||null)}/></label>
     <div className="form-grid"><label>Bezeichnung<input autoFocus required value={name} onChange={e=>setName(e.target.value)} placeholder="Zitronen-Risotto"/></label><label>Kategorie<select required value={category} onChange={e=>setCategory(e.target.value)}>{categories.map(c=><option value={c.id} key={c.id}>{c.name}</option>)}</select></label></div>

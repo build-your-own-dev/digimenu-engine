@@ -7,13 +7,14 @@ hinzu und veröffentlichen ihre Karte über einen teilbaren Link.
 ## Funktionen
 
 - Supabase E-Mail-Registrierung und Login
-- Restaurant-Onboarding
+- Bis zu zwei eigene Restaurants pro Account mit Restaurantwechsel
+- Einmalige Einladungslinks für Kollaboratoren
 - Kategorien für Speisen, Getränke und mehr
 - Menüeinträge erstellen, bearbeiten, löschen und als ausverkauft markieren
 - Eigenschaften wie vegetarisch, vegan und scharf
 - Öffentliche, mobile Menükarte mit Suche und Kategorien
 - Veröffentlichungsschalter und teilbarer Link
-- Row-Level-Security: Besitzer können nur das eigene Restaurant bearbeiten
+- Row-Level-Security für Eigentümer und eingeladene Kollaboratoren
 - Reiner Static Export für GitHub Pages
 
 ## 1. Supabase einrichten
@@ -27,6 +28,12 @@ hinzu und veröffentlichen ihre Karte über einen teilbaren Link.
    Frontend.
 5. Füge unter **Authentication → URL Configuration** deine lokale und deine
    GitHub-Pages-Adresse als Redirect URLs hinzu.
+
+Führe danach diese idempotenten Migrationen ebenfalls im SQL Editor aus (auch
+bei einem bestehenden Menuva-Projekt):
+
+1. `supabase/media-migration.sql`
+2. `supabase/multi-restaurant-collaboration-migration.sql`
 
 ## 2. Lokal starten
 
@@ -58,4 +65,3 @@ Für eine eigene Domain entfernst du im Workflow den Wert von
 Next.js (statischer Export), React, TypeScript, Supabase und Lucide Icons. Es ist
 kein eigener Server erforderlich: GitHub Pages liefert die Oberfläche aus,
 Supabase übernimmt Authentifizierung und Datenbank.
-
