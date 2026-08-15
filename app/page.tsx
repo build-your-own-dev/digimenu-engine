@@ -53,6 +53,8 @@ function slugify(value: string) {
   return value.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 48);
 }
+function mixHex(color:string,target:string,amount:number){const clean=(value:string)=>value.replace("#","").padEnd(6,"0").slice(0,6);const source=clean(color),destination=clean(target);const channel=(index:number)=>Math.round(parseInt(source.slice(index,index+2),16)*(1-amount)+parseInt(destination.slice(index,index+2),16)*amount).toString(16).padStart(2,"0");return`#${channel(0)}${channel(2)}${channel(4)}`}
+function contrastFor(color:string){const clean=color.replace("#","");const r=parseInt(clean.slice(0,2),16),g=parseInt(clean.slice(2,4),16),b=parseInt(clean.slice(4,6),16);return(r*299+g*587+b*114)/1000>155?"#17201b":"#ffffff"}
 function route() {
   const hash = window.location.hash.replace(/^#/, "") || "/";
   if (hash.startsWith("/m/")) return { page: "menu", slug: hash.slice(3) };
@@ -257,6 +259,7 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
     }catch(uploadError){const details=typeof uploadError==="object"&&uploadError?uploadError as {message?:string;code?:string}:{};setError(details.code==="23505"?"Dieser Menü-Link ist bereits vergeben.":details.message||"Upload fehlgeschlagen.")}finally{setBusy(false)}
   }
   const previewUrl=menuUrl.replace(restaurant.slug,slug||restaurant.slug);
+  const previewDeep=mixHex(accentColor,"#17201b",.58);
   return <div className="settings-page">
     <header className="dash-header settings-page-header">
       <div><span className="dash-overline">RESTAURANTVERWALTUNG</span><h1>Dein Auftritt.</h1><p>Verwalte alle Angaben, die deine Gäste auf der digitalen Karte sehen.</p></div>
@@ -289,9 +292,9 @@ function RestaurantSettingsPage({restaurant,menuUrl,onTogglePublished,onSaved}:{
         </div>
         <aside className="settings-preview">
           <div className="settings-preview-label"><span>LIVE-VORSCHAU</span><small>Wird beim Tippen aktualisiert</small></div>
-          <div className="settings-preview-window" style={{"--preview-accent":accentColor} as React.CSSProperties}>
+          <div className="settings-preview-window" style={{"--preview-accent":accentColor,"--preview-deep":previewDeep} as React.CSSProperties}>
             <div className="preview-browser"><i/><i/><i/><span>menuva</span></div>
-            <div className={`preview-hero ${bannerPreview?"has-banner":""}`} style={bannerPreview?{backgroundImage:`linear-gradient(90deg,#183f34ee,#183f3488),url(${bannerPreview})`}:undefined}>{logoPreview&&<img className="preview-logo" src={logoPreview} alt=""/>}<small>{location||"DEIN STANDORT"}</small><h3>{name||"Dein Restaurant"}</h3><p>{description||"Deine Restaurantbeschreibung erscheint hier."}</p>{!bannerPreview&&<div>{(name||"R").slice(0,1)}</div>}</div>
+            <div className={`preview-hero ${bannerPreview?"has-banner":""}`} style={bannerPreview?{backgroundImage:`linear-gradient(90deg,${previewDeep}f2,${previewDeep}88),url(${bannerPreview})`}:undefined}>{logoPreview&&<img className="preview-logo" src={logoPreview} alt=""/>}<small>{location||"DEIN STANDORT"}</small><h3>{name||"Dein Restaurant"}</h3><p>{description||"Deine Restaurantbeschreibung erscheint hier."}</p>{!bannerPreview&&<div>{(name||"R").slice(0,1)}</div>}</div>
             <div className="preview-tabs"><b>Alles</b><span>Speisen</span><span>Getränke</span></div>
             <div className="preview-dishes"><article><div><b>Dein erster Menüeintrag</b><small>Beschreibung und Zutaten</small></div><strong>{money(24,currency)}</strong></article><article><div><b>Hausgemachte Spezialität</b><small>Frisch für deine Gäste</small></div><strong>{money(16,currency)}</strong></article></div>
           </div>
@@ -329,8 +332,9 @@ function PublicMenu({slug}:{slug:string}) {
   function toggleRemembered(id:string){setRemembered(current=>{const next={...current};if(next[id])delete next[id];else next[id]=1;return next})}
   function changeAmount(id:string,change:number){setRemembered(current=>{const next={...current};const amount=(next[id]||0)+change;if(amount<=0)delete next[id];else next[id]=amount;return next})}
   if(loading)return <div className="center-page"><Loader2 className="spin"/></div>;if(!restaurant)return <div className="center-page"><Logo/><h1>Menü nicht gefunden</h1><p>Diese Karte ist nicht veröffentlicht oder existiert nicht.</p><a className="button button-dark" href="#/">Zu Menuva</a></div>;
-  const heroStyle=restaurant.banner_url?{backgroundImage:`linear-gradient(90deg,#183f34f2,#183f3494),url(${restaurant.banner_url})`}:undefined;
-  return <main className="public-menu" style={{"--accent":restaurant.accent_color} as React.CSSProperties}>
+  const accent=restaurant.accent_color||"#ff6038";const accentDeep=mixHex(accent,"#17201b",.58);const accentSoft=mixHex(accent,"#ffffff",.88);const accentWash=mixHex(accent,"#faf7ee",.94);const accentContrast=contrastFor(accent);
+  const heroStyle=restaurant.banner_url?{backgroundImage:`linear-gradient(90deg,${accentDeep}f2,${accentDeep}94),url(${restaurant.banner_url})`}:undefined;
+  return <main className="public-menu" style={{"--accent":accent,"--accent-deep":accentDeep,"--accent-soft":accentSoft,"--accent-wash":accentWash,"--accent-contrast":accentContrast} as React.CSSProperties}>
     <header className={`menu-hero ${restaurant.banner_url?"has-banner":""}`} style={heroStyle}>
       <nav className="restaurant-menu-nav"><a href="#/" className="powered">Powered by <b>menuva</b></a></nav>
       <div>{restaurant.logo_url&&<img className="restaurant-public-logo" src={restaurant.logo_url} alt={`${restaurant.name} Logo`}/>}<span className="menu-location">{restaurant.location||"Willkommen"}</span><h1>{restaurant.name}</h1><p>{restaurant.description}</p></div>
