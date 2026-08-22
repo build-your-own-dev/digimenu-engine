@@ -34,7 +34,7 @@
 /* Full restaurant settings page */
 .hidden-section{display:none!important}
 .sidebar nav button.active{background:#ffffff14;color:white}
-.restaurant-settings-page{padding-bottom:120px}
+.restaurant-settings-page{padding-bottom:46px}
 .settings-page-header{margin-bottom:32px}
 .settings-page-header>div:first-child>p{margin:7px 0 0;color:var(--muted);font-size:13px}
 .settings-form{display:block}
@@ -80,13 +80,13 @@
 .preview-dishes strong{font-size:8px;white-space:nowrap}
 .preview-link{display:flex;align-items:center;gap:8px;margin-top:12px;padding:11px 13px;background:#edf1e9;border:1px solid #dbe2d5;border-radius:10px;color:#557064;font-size:9px;overflow:hidden}
 .preview-link span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.settings-savebar{position:fixed;z-index:8;left:235px;right:0;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px clamp(25px,5vw,75px);background:#fffdf8ee;border-top:1px solid #dedbd2;backdrop-filter:blur(14px);box-shadow:0 -8px 30px #17201b0b}
+.settings-savebar{position:sticky;z-index:8;bottom:18px;width:min(100%,620px);margin:24px 0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:12px 13px 12px 18px;background:#fffdf8f2;border:1px solid #dedbd2;border-radius:16px;backdrop-filter:blur(14px);box-shadow:0 14px 38px #17201b1a}
 .settings-savebar p{display:flex;align-items:center;gap:7px;margin:0;color:#757b75;font-size:11px}
 .settings-savebar .form-message{color:#75511c}
 .settings-savebar .button{min-width:205px}
 @media(max-width:1100px){.settings-layout{grid-template-columns:1fr}.settings-preview{position:static;max-width:520px}.settings-preview-window{max-width:380px}}
-@media(max-width:900px){.settings-savebar{left:0}.restaurant-settings-page{padding-bottom:110px}}
-@media(max-width:620px){.restaurant-settings-page{padding-inline:16px}.settings-card{padding:19px}.settings-page-header .dash-actions{display:grid;grid-template-columns:1fr 1fr}.settings-layout{gap:20px}.settings-preview{max-width:none}.settings-savebar{padding:11px 16px}.settings-savebar>div{display:none}.settings-savebar .button{width:100%;min-width:0}.color-swatches{flex-wrap:wrap}}
+@media(max-width:900px){.restaurant-settings-page{padding-bottom:40px}}
+@media(max-width:620px){.restaurant-settings-page{padding-inline:16px;padding-bottom:28px}.settings-card{padding:19px}.settings-page-header .dash-actions{display:grid;grid-template-columns:1fr 1fr}.settings-layout{gap:20px}.settings-preview{max-width:none}.settings-savebar{bottom:10px;width:100%;margin-top:18px;padding:10px;border-radius:13px}.settings-savebar>div{display:none}.settings-savebar .button{width:100%;min-width:0}.color-swatches{flex-wrap:wrap}}
 /* Menuva motion system: subtle, purposeful movement that also works on mobile. */
 @keyframes menuva-rise{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
 @keyframes menuva-rise-small{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -107,7 +107,7 @@
 .share-actions{display:flex;gap:8px;justify-content:flex-end}.share-actions button{border:0;background:white;padding:9px 12px;border-radius:8px;display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;cursor:pointer}.share-actions button:hover{background:#f4f1e9;transform:translateY(-1px)}
 .qr-modal-backdrop{position:fixed;inset:0;z-index:30;background:#17201baa;display:grid;place-items:center;padding:25px}.qr-modal{width:min(460px,100%);background:var(--paper);border-radius:20px;padding:25px;box-shadow:0 35px 90px #0006}.qr-modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}.qr-modal-head h2{font:700 24px "Manrope";margin:8px 0 0}.qr-print-sheet{text-align:center;background:white;border:1px solid var(--line);border-radius:16px;padding:24px;margin-top:24px}.qr-print-sheet img{display:block;width:min(280px,100%);aspect-ratio:1;margin:auto}.qr-print-sheet h3{font:700 23px "Manrope";margin:18px 0 5px}.qr-print-sheet p{color:var(--muted);font-size:12px;margin:0}.qr-url{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;margin:14px 0}.qr-modal-actions{display:flex;justify-content:flex-end;gap:9px}.qr-modal-actions .button{min-width:130px}
 @media(max-width:620px){.share-actions{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}.share-actions button{justify-content:center}.qr-modal{padding:19px}.qr-print-sheet{padding:16px}}
-@media print{body>*{display:none!important}.qr-modal-backdrop{display:block;position:static;background:white;padding:0}.qr-modal{width:100%;max-width:none;box-shadow:none;padding:0}.qr-modal-head,.qr-url,.no-print{display:none!important}.qr-print-sheet{border:0;margin:0;padding:25mm 15mm}.qr-print-sheet img{width:125mm;max-width:100%}.qr-print-sheet h3{font-size:28pt}.qr-print-sheet p{font-size:13pt}}
+@media print{@page{size:A4 portrait;margin:0}body{background:white}body *{visibility:hidden}.qr-modal-backdrop,.qr-modal-backdrop *{visibility:visible}.qr-modal-backdrop{display:block;position:absolute;inset:0;background:white;padding:0}.qr-modal{width:100%;max-width:none;box-shadow:none;padding:0;background:white}.qr-modal-head,.qr-url,.no-print{display:none!important}.qr-print-sheet{border:0;margin:0;padding:25mm 15mm;break-inside:avoid}.qr-print-sheet img{width:125mm;max-width:100%}.qr-print-sheet h3{font-size:28pt}.qr-print-sheet p{font-size:13pt}}
 .qr-loading{width:min(280px,100%);aspect-ratio:1;margin:auto;background:#f6f4ee;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:11px}
 @media(max-width:620px){.qr-modal-actions{display:grid;grid-template-columns:1fr 1fr}.qr-modal-actions .button{min-width:0}.qr-modal-actions .button-primary{grid-column:1/-1}}
 

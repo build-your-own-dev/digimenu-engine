@@ -246,6 +246,21 @@ function Dashboard() {
 }
 
 function SetupNeeded(){return <div className="center-page setup-needed"><Logo/><h1>Supabase verbinden</h1><p>Kopiere <code>.env.example</code> zu <code>.env.local</code>, trage URL und Anon Key ein und führe <code>supabase/schema.sql</code> im SQL Editor aus.</p><a className="button button-dark" href="#/m/demo">Erst das Demo-Menü ansehen</a></div>}
+async function downloadQrPoster(qrDataUrl:string,restaurantName:string){
+  const canvas=document.createElement("canvas");canvas.width=1200;canvas.height=1400;
+  const context=canvas.getContext("2d");if(!context)return;
+  context.fillStyle="#ffffff";context.fillRect(0,0,canvas.width,canvas.height);
+  context.strokeStyle="#deddd4";context.lineWidth=3;context.beginPath();context.roundRect(2,2,1196,1396,34);context.stroke();
+  const qrImage=new Image();qrImage.src=qrDataUrl;await new Promise<void>((resolve,reject)=>{qrImage.onload=()=>resolve();qrImage.onerror=()=>reject(new Error("QR-Code konnte nicht geladen werden."))});
+  context.drawImage(qrImage,150,80,900,900);
+  context.textAlign="center";context.textBaseline="middle";context.fillStyle="#17201b";
+  let nameSize=72;do{context.font=`700 ${nameSize}px Manrope, Arial, sans-serif`;nameSize-=2}while(context.measureText(restaurantName).width>1040&&nameSize>40);
+  context.fillText(restaurantName,600,1100);
+  context.font="400 38px Manrope, Arial, sans-serif";context.fillStyle="#6d746e";
+  context.fillText("Scannen und digitale Menükarte öffnen",600,1190);
+  const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,"image/png"));if(!blob)return;
+  const downloadUrl=URL.createObjectURL(blob);const link=document.createElement("a");link.href=downloadUrl;link.download=`${slugify(restaurantName)||"menuva"}-qr-schild.png`;link.click();setTimeout(()=>URL.revokeObjectURL(downloadUrl),1000);
+}
 function QrCodeModal({menuUrl,restaurantName,onClose}:{menuUrl:string;restaurantName:string;onClose:()=>void}) {
   const [qrDataUrl,setQrDataUrl]=useState("");
   useEffect(()=>{
@@ -253,7 +268,7 @@ function QrCodeModal({menuUrl,restaurantName,onClose}:{menuUrl:string;restaurant
     void QRCode.toDataURL(menuUrl,{width:900,margin:3,errorCorrectionLevel:"H",color:{dark:"#17201b",light:"#ffffff"}}).then(url=>{if(active)setQrDataUrl(url)});
     return()=>{active=false};
   },[menuUrl]);
-  return <div className="qr-modal-backdrop" onMouseDown={e=>{if(e.currentTarget===e.target)onClose()}}><div className="qr-modal"><div className="qr-modal-head"><div><span className="section-kicker">DEINE MENÜKARTE</span><h2>QR-Code für {restaurantName}</h2></div><button className="icon-button no-print" onClick={onClose} aria-label="Schliessen"><X/></button></div><div className="qr-print-sheet">{qrDataUrl?<img src={qrDataUrl} alt={`QR-Code für ${restaurantName}`}/>:<div className="qr-loading"><Loader2 className="spin"/><span>QR-Code wird erstellt …</span></div>}<div><h3>{restaurantName}</h3><p>Scannen und digitale Menükarte öffnen</p></div></div><p className="qr-url">{menuUrl}</p><div className="qr-modal-actions no-print"><button className="button button-outline" onClick={onClose}>Schliessen</button>{qrDataUrl&&<a className="button button-outline" href={qrDataUrl} download={`${slugify(restaurantName)||"menuva"}-qr-code.png`}><Download size={17}/> PNG</a>}<button className="button button-primary" disabled={!qrDataUrl} onClick={()=>window.print()}><QrCode size={17}/> Drucken</button></div></div></div>
+  return <div className="qr-modal-backdrop" onMouseDown={e=>{if(e.currentTarget===e.target)onClose()}}><div className="qr-modal"><div className="qr-modal-head"><div><span className="section-kicker">DEINE MENÜKARTE</span><h2>QR-Code für {restaurantName}</h2></div><button className="icon-button no-print" onClick={onClose} aria-label="Schliessen"><X/></button></div><div className="qr-print-sheet">{qrDataUrl?<img src={qrDataUrl} alt={`QR-Code für ${restaurantName}`}/>:<div className="qr-loading"><Loader2 className="spin"/><span>QR-Code wird erstellt …</span></div>}<div><h3>{restaurantName}</h3><p>Scannen und digitale Menükarte öffnen</p></div></div><p className="qr-url">{menuUrl}</p><div className="qr-modal-actions no-print"><button className="button button-outline" onClick={onClose}>Schliessen</button>{qrDataUrl&&<button className="button button-outline" onClick={()=>void downloadQrPoster(qrDataUrl,restaurantName)}><Download size={17}/> PNG</button>}<button className="button button-primary" disabled={!qrDataUrl} onClick={()=>window.print()}><QrCode size={17}/> Drucken</button></div></div></div>
 }
 function EmptyState({onCategory,onRecognition}:{onCategory:()=>void;onRecognition:()=>void}){return <div className="empty-state"><div><Menu size={30}/></div><h3>Deine Karte ist noch leer</h3><p>Erstelle eine Kategorie von Hand oder erkenne eine bestehende Speisekarte automatisch aus Bildern.</p><div className="empty-state-actions"><button className="button button-outline" onClick={onRecognition}><ScanText size={17}/> Speisekarte erkennen</button><button className="button button-primary" onClick={onCategory}><Plus size={17}/> Erste Kategorie erstellen</button></div></div>}
 
